@@ -48,8 +48,6 @@ class AuthorizationHandler(BaseEndpoint):
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = trust_chains
-        self._db_engine = OidcDbEngine(config.get("db_config", {}))
-        self._db_engine.connect()
 
     @property
     def _jwks(self) -> dict:
@@ -127,7 +125,7 @@ class AuthorizationHandler(BaseEndpoint):
             provider_configuration=trust_chain.subject_configuration.payload["metadata"]
         )
 
-        self.__insert(authorization_entity)
+        self.__insert(authorization_entity, context)
 
         self.__create_jws(authz_data)
 
@@ -160,7 +158,6 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params[provider: {provider}]"
         )
         return self.trust_chains[provider]
-
 
     def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
         """
@@ -296,31 +293,33 @@ class AuthorizationHandler(BaseEndpoint):
 
         return uri_path
 
-    def __insert(self, obj: dict):
-
+    def __insert(self, obj: dict, context):
         """
-        method __insert:
-        This method insert the input dictionary into DB layer.
-
-        :type self: object
-        :type input: dict
-
-        :param self: object
-        :param input: dict
-
+        Versão stateless do __insert - recebe o context como parâmetro
         """
-        logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [input {obj}]"
-        )
-
         try:
             auth = OidcAuthentication(**obj)
-            if self._db_engine.add_session(auth) < 1:
-                logger.error("Unable to insert the Authentication object")
-        except ValidationError as e:
-            logger.debug(e)
-        #todo manage result
+            self.__prepare_for_insert(auth)
+            auth.id = str(uuid.uuid4())
 
-        logger.debug(
-            f"Registration success for input: {obj}"
-        )
+            auth_dump = auth.model_dump(mode="json")
+            
+            # Salva no context (recebido como parâmetro)
+            if context:
+                context.state["satosa_authz_state"] = auth_dump
+            else:
+                logger.warning("Context não disponível para salvar auth")
+            
+            logger.info(f"Objeto de autenticação criado (stateless) com sucesso")
+            
+        except ValidationError as e:
+            logger.error(f"Erro de validação: {e}")
+        except Exception as e:
+            logger.error(f"Erro inesperado: {e}")
+
+    def __prepare_for_insert(self, auth_entity: OidcAuthentication):
+        """Prepara a entidade para inserção"""
+        now = datetime.now(timezone.utc)
+        if auth_entity.created is None:
+            auth_entity.created = now
+        auth_entity.modified = now
