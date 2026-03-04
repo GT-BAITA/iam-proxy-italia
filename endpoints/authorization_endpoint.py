@@ -176,7 +176,7 @@ class AuthorizationHandler(BaseEndpoint):
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
 
-        scope = self.config["metadata"]["openid_relying_party"]["scope"]
+        scope = self.config["scope"]
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
