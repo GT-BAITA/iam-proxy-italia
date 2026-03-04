@@ -47,6 +47,7 @@ class AuthorizationHandler(BaseEndpoint):
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = trust_chains
+        # Removido a incialização do mongo-db
 
     @property
     def _jwks(self) -> dict:
@@ -351,6 +352,8 @@ class AuthorizationHandler(BaseEndpoint):
             auth_dump = auth.model_dump(mode="json")
 
             # Salva no context (recebido como parâmetro)
+            # Substituímos a implementação o mongo db
+            # colocando as informações no context do satosa
             if context:
                 context.state["satosa_authz_state"] = auth_dump
             else:

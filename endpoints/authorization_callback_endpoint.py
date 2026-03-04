@@ -49,6 +49,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
+        # Removido a incialização do mongo-db
 
     def endpoint(self, context, *args):
         """
@@ -233,6 +234,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [state {state}]"
         )
+        # não usa mais mongo DB
+        # busca as informações no context
         try:
             output = context.state["satosa_authz_state"]
             output = OidcAuthentication(**output)
@@ -276,6 +279,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
             f"Params [authorization {authorization}, access_token: {access_token}, id_token:{id_token}, token_response:{token_response}]"
         )
+
+        # não atualiza mais no mongo DB
+        # atualizamos as informações no context
         authorization["access_token"] = access_token
         authorization["id_token"] = id_token
         authorization["scope"] = token_response.get("scope")
