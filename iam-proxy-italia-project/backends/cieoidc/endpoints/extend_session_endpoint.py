@@ -1,18 +1,21 @@
-import inspect
-import json
 import logging
-from typing import Callable
+import json
+import inspect
 
-from pyeudiw.trust.dynamic import CombinedTrustEvaluator
+from typing import Callable
 from satosa.attribute_mapping import AttributeMapper
 from satosa.context import Context
-from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
 from satosa.internal import InternalData
 from satosa.response import Response
-from satosa_oid_fed_lib.cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
-
+from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
+from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.jwtse import unpad_jwt_payload
+from cieoidc.utils.helpers.jwtse import (
+    unpad_jwt_payload
+)
+
+from pyeudiw.trust.dynamic import CombinedTrustEvaluator
+
 
 logger = logging.getLogger(__name__)
 
