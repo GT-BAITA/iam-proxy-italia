@@ -1,17 +1,14 @@
 import json
-from unittest.mock import MagicMock, patch
-
 import pytest
+from unittest.mock import patch, MagicMock
+
 from cieoidc.utils.clients.oidc import OidcUserInfo
 from cieoidc.utils.exceptions import UnknownKid
 from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
 
-
 @pytest.fixture
 def provider_config():
-    return {
-        "userinfo_endpoint": "http://cie-provider.example.org:8002/oidc/op/userinfo"
-    }
+    return {"userinfo_endpoint": "http://cie-provider.example.org:8002/oidc/op/userinfo"}
 
 
 @pytest.fixture
@@ -37,9 +34,7 @@ def configuration_utils():
 @pytest.fixture
 def userinfo(provider_config, jwks_core, httpc_params):
     return OidcUserInfo(provider_config, jwks_core, httpc_params)
-
-
-@patch("backends.cieoidc.utils.clients.oidc.requests.get")
+@patch("cieoidc.utils.clients.oidc.requests.get")
 def test_us01(mock_get, userinfo, configuration_utils):
     response_payload = {"sub": "user123"}
     mock_response = MagicMock()
@@ -64,8 +59,7 @@ def test_us01(mock_get, userinfo, configuration_utils):
         timeout=5,
     )
 
-
-@patch("backends.cieoidc.utils.clients.oidc.requests.get")
+@patch("cieoidc.utils.clients.oidc.requests.get")
 def test_us02(mock_get, userinfo, configuration_utils):
     mock_response = MagicMock()
     mock_response.status_code = 400
@@ -81,27 +75,21 @@ def test_us02(mock_get, userinfo, configuration_utils):
 
     assert result is False
 
-
-@patch("backends.cieoidc.utils.clients.oidc.requests.get")
-@patch("backends.cieoidc.utils.clients.oidc.unpad_jwt_head")
-@patch("backends.cieoidc.utils.clients.oidc.decrypt_jwe")
-@patch("backends.cieoidc.utils.clients.oidc.get_jwks")
-@patch("backends.cieoidc.utils.clients.oidc.verify_jws")
-def test_us03(
-    mock_verify,
-    mock_get_jwks,
-    mock_decrypt,
-    mock_unpad,
-    mock_get,
-    userinfo,
-    configuration_utils,
-):
+@patch("cieoidc.utils.clients.oidc.requests.get")
+@patch("cieoidc.utils.clients.oidc.unpad_jwt_head")
+@patch("cieoidc.utils.clients.oidc.decrypt_jwe")
+@patch("cieoidc.utils.clients.oidc.get_jwks")
+@patch("cieoidc.utils.clients.oidc.verify_jws")
+def test_us03(mock_verify, mock_get_jwks, mock_decrypt, mock_unpad, mock_get, userinfo, configuration_utils):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.content = b"fake-jwe"
     mock_response.json.side_effect = Exception("not json")
     mock_get.return_value = mock_response
-    mock_unpad.side_effect = [{"kid": "core-kid"}, {"kid": "idp-kid"}]
+    mock_unpad.side_effect = [
+        {"kid": "core-kid"},
+        {"kid": "idp-kid"}
+    ]
 
     mock_decrypt.return_value = b"fake-jws"
     mock_get_jwks.return_value = [{"kid": "idp-kid"}]
@@ -117,17 +105,14 @@ def test_us03(
     assert mock_decrypt.called
     assert mock_verify.called
 
-
-@patch("backends.cieoidc.utils.clients.oidc.requests.get")
+@patch("cieoidc.utils.clients.oidc.requests.get")
 def test_us04(mock_get, userinfo, configuration_utils):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.content = b"fake"
     mock_response.json.side_effect = Exception("not json")
     mock_get.return_value = mock_response
-    userinfo._OidcUserInfo__get_jwk = lambda kid, jwks: (_ for _ in ()).throw(
-        UnknownKid()
-    )
+    userinfo._OidcUserInfo__get_jwk = lambda kid, jwks: (_ for _ in ()).throw(UnknownKid())
 
     result = userinfo.get_userinfo(
         state="state123",
@@ -139,10 +124,9 @@ def test_us04(mock_get, userinfo, configuration_utils):
 
     assert result is False
 
-
-@patch("backends.cieoidc.utils.clients.oidc.requests.get")
-@patch("backends.cieoidc.utils.clients.oidc.unpad_jwt_head")
-@patch("backends.cieoidc.utils.clients.oidc.decrypt_jwe")
+@patch("cieoidc.utils.clients.oidc.requests.get")
+@patch("cieoidc.utils.clients.oidc.unpad_jwt_head")
+@patch("cieoidc.utils.clients.oidc.decrypt_jwe")
 def test_us05(mock_decrypt, mock_unpad, mock_get, userinfo, configuration_utils):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -159,5 +143,4 @@ def test_us05(mock_decrypt, mock_unpad, mock_get, userinfo, configuration_utils)
         configuration_utils=configuration_utils,
     )
 
-    assert result is False
     assert result is False
