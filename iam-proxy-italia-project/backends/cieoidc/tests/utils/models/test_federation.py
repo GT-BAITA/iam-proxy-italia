@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock, PropertyMock
 
-from cieoidc.models.federation import FederationEntityConfiguration, is_leaf
+from backends.cieoidc.models.federation import FederationEntityConfiguration, is_leaf
 
 @pytest.fixture
 def jwk_example():
@@ -51,7 +51,7 @@ def test_us01(metadata_leaf):
 def test_us02(metadata_non_leaf):
     assert is_leaf(metadata_non_leaf) is None
 
-@patch("cieoidc.utils.helpers.jwks.serialize_rsa_key")
+@patch("backends.cieoidc.utils.helpers.jwks.serialize_rsa_key")
 @patch("cryptojwt.jwk.jwk.key_from_jwk_dict")
 def test_us03(mock_key_from_jwk, mock_serialize, federation_entity, jwk_example):
     mock_pub = MagicMock()
@@ -62,8 +62,8 @@ def test_us03(mock_key_from_jwk, mock_serialize, federation_entity, jwk_example)
     assert res[0]["kty"] == "RSA"
     assert res[0]["kid"] == jwk_example[0]["kid"]
 
-@patch("cieoidc.models.federation.private_pem_from_jwk")
-@patch("cieoidc.models.federation.public_pem_from_jwk")
+@patch("backends.cieoidc.models.federation.private_pem_from_jwk")
+@patch("backends.cieoidc.models.federation.public_pem_from_jwk")
 def test_us04(mock_public_pem, mock_private_pem, federation_entity, jwk_example):
     mock_private_pem.return_value = "PRIVATE"
     mock_public_pem.return_value = "PUBLIC"
@@ -79,7 +79,7 @@ def test_us04(mock_public_pem, mock_private_pem, federation_entity, jwk_example)
 
 def test_us05(federation_entity):
     with patch(
-        "cieoidc.models.federation.FederationEntityConfiguration.pems_as_dict",
+        "backends.cieoidc.models.federation.FederationEntityConfiguration.pems_as_dict",
         new_callable=PropertyMock,
         return_value={"k":"v"}):
         res = federation_entity.pems_as_json
@@ -94,8 +94,8 @@ def test_us07(federation_entity, metadata_leaf):
 def test_us08(federation_entity):
     assert federation_entity.is_leaf is True
 
-@patch("cieoidc.models.federation.exp_from_now", return_value=12345)
-@patch("cieoidc.models.federation.iat_now", return_value=67890)
+@patch("backends.cieoidc.models.federation.exp_from_now", return_value=12345)
+@patch("backends.cieoidc.models.federation.iat_now", return_value=67890)
 def test_us09(mock_iat, mock_exp, federation_entity):
     conf = federation_entity.entity_configuration_as_dict
     assert conf["exp"] == 12345
@@ -106,14 +106,14 @@ def test_us09(mock_iat, mock_exp, federation_entity):
 
 def test_us10(federation_entity):
     with patch(
-        "cieoidc.models.federation.FederationEntityConfiguration.entity_configuration_as_dict",
+        "backends.cieoidc.models.federation.FederationEntityConfiguration.entity_configuration_as_dict",
         new_callable=PropertyMock,
         return_value={"a": 1},
     ):
         res = federation_entity.entity_configuration_as_json
         assert json.loads(res) == {"a": 1}
 
-@patch("cieoidc.models.federation.create_jws")
+@patch("backends.cieoidc.models.federation.create_jws")
 def test_us11(mock_create_jws, federation_entity):
     mock_create_jws.return_value = "signed.jwt"
     res = federation_entity.entity_configuration_as_jws

@@ -1,14 +1,14 @@
 import uuid
 import pytest
 import os
-from cieoidc.tests import settings_test
+from backends.cieoidc.tests import settings_test
 from unittest.mock import MagicMock, patch
 from bson.binary import Binary
 from bson import ObjectId
 from pymongo.errors import PyMongoError, InvalidOperation
 
-from cieoidc.storage.impl.mongo_storage import MongoStorage
-from cieoidc.models.oidc_auth import OidcAuthentication
+from backends.cieoidc.storage.impl.mongo_storage import MongoStorage
+from backends.cieoidc.models.oidc_auth import OidcAuthentication
 
 
 @pytest.fixture
@@ -156,7 +156,7 @@ def test_us19(storage):
 
 def test_connect_and_close(storage):
     storage._MongoStorage__client = None
-    with patch("cieoidc.storage.impl.mongo_storage.MongoClient") as mock_client:
+    with patch("backends.cieoidc.storage.impl.mongo_storage.MongoClient") as mock_client:
         storage.connect()
         assert storage._MongoStorage__client == mock_client.return_value
         storage.close()

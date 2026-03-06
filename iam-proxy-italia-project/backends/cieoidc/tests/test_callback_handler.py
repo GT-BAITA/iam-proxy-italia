@@ -2,15 +2,15 @@ import pytest
 from unittest.mock import MagicMock, patch
 from satosa.context import Context
 from satosa.response import Response
-from cieoidc.endpoints.authorization_callback_endpoint import AuthorizationCallBackHandler
-from cieoidc.utils.clients.oidc import OidcUserInfo
+from backends.cieoidc.endpoints.authorization_callback_endpoint import AuthorizationCallBackHandler
+from ..utils.clients.oidc import OidcUserInfo
 from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
 
 
 @pytest.fixture(autouse=True)
 def mock_db_engine():
     with patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.OidcDbEngine"
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.OidcDbEngine"
     ) as mock_engine:
         instance = mock_engine.return_value
         instance.connect.return_value = None
@@ -39,7 +39,7 @@ def handler():
         "httpc_params": {"connection": {"ssl": False}, "session": {"timeout": 5}},
         "claims": {},
         "metadata": {"openid_relying_party": {"client_id": "client123"}},
-        "db_config": {"mongo_db":{"module":"cieoidc.storage.impl.mongo_storage","class":"MongoStorage","init_params":{"url":"mongodb://localhost:27017"}}}
+        "db_config": {"mongo_db":{"module":"backends.cieoidc.storage.impl.mongo_storage","class":"MongoStorage","init_params":{"url":"mongodb://localhost:27017"}}}
     }
 
     auth_callback_func = MagicMock(return_value=Response("OK"))
@@ -90,13 +90,13 @@ def test_us04(handler, state, code, iss):
     context = Context()
     context.qs_params = {"state": state, "code": code, "iss": iss}
 
-    with patch("cieoidc.endpoints.authorization_callback_endpoint.get_jwks", return_value={"keys": []}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt", return_value={"kid": "key1"}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.verify_jws", return_value=True), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
+    with patch("backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks", return_value={"keys": []}), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt", return_value={"kid": "key1"}), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.verify_jws", return_value=True), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
                return_value={"sub": "user123", "at_hash": "dummy"}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash"), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.process_user_attributes",
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash"), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.process_user_attributes",
                return_value={"email": "test@example.com"}), \
          patch.object(handler, "_AuthorizationCallBackHandler__access_token_request", return_value={
              "access_token": "dummy_access_token",
@@ -115,13 +115,13 @@ def test_us05(handler):
     context.qs_params = {"state": "dummy_state", "code": "dummy_code",
                          "iss": "http://cie-provider.example.org:8002/oidc/op"}
 
-    with patch("cieoidc.utils.clients.oidc.OidcUserInfo.get_userinfo", return_value=None), \
-         patch("cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+    with patch("backends.cieoidc.utils.clients.oidc.OidcUserInfo.get_userinfo", return_value=None), \
+         patch("backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
                return_value={"access_token": "t", "id_token": "t", "token_type": "Bearer", "expires_in": 1}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.get_jwks", return_value={"keys": []}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt", return_value={"kid": "k"}), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.verify_jws", return_value=True), \
-         patch("cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks", return_value={"keys": []}), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt", return_value={"kid": "k"}), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.verify_jws", return_value=True), \
+         patch("backends.cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
                return_value={"sub": "user123", "at_hash": "dummy"}):
         with pytest.raises(SATOSAAuthenticationError):
             handler.endpoint(context)
@@ -163,7 +163,7 @@ def test_init_generate_configuration_plugin_called():
         "db_config": {}
     }
     with patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.OidcDbEngine"
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.OidcDbEngine"
     ) as mock_engine:
         mock_engine.return_value.is_connected.return_value = True
 
@@ -238,7 +238,7 @@ def test_empty_token_response(handler):
         "iss": "http://cie-provider.example.org:8002/oidc/op"
     }
     with patch(
-        "cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+        "backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
         return_value=None
     ):
         with pytest.raises(SATOSAAuthenticationError):
@@ -253,13 +253,13 @@ def test_missing_jwk(handler):
         "iss": "http://cie-provider.example.org:8002/oidc/op"
     }
     with patch(
-        "cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+        "backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
         return_value={"access_token": "a", "id_token": "b", "token_type": "Bearer", "expires_in": 1}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
         return_value={"keys": []}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
         return_value=None
     ):
         with pytest.raises(SATOSAAuthenticationError):
@@ -274,7 +274,7 @@ def test_verify_jws_exception(handler):
         "iss": "http://cie-provider.example.org:8002/oidc/op"
     }
     with patch(
-        "cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+        "backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
         return_value={
             "access_token": "a",
             "id_token": "b",
@@ -282,13 +282,13 @@ def test_verify_jws_exception(handler):
             "expires_in": 1
         }
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
         return_value={"keys": []}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
         return_value={"kid": "k"}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
         side_effect=Exception("boom")
     ):
         with pytest.raises(SATOSAAuthenticationError):
@@ -304,7 +304,7 @@ def test_verify_at_hash_exception(handler):
     }
 
     with patch(
-        "cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+        "backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
         return_value={
             "access_token": "a",
             "id_token": "b",
@@ -312,19 +312,19 @@ def test_verify_at_hash_exception(handler):
             "expires_in": 1
         }
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
         return_value={"keys": []}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
         return_value={"kid": "k"}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
         return_value=True
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
         return_value={"at_hash": "x"}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash",
         side_effect=Exception("boom")
     ):
         with pytest.raises(SATOSAAuthenticationError):
@@ -341,7 +341,7 @@ def test_empty_user_attributes(handler):
     }
 
     with patch(
-        "cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
+        "backends.cieoidc.utils.clients.oauth2.OAuth2AuthorizationCodeGrant.access_token_request",
         return_value={
             "access_token": "a",
             "id_token": "b",
@@ -349,25 +349,25 @@ def test_empty_user_attributes(handler):
             "expires_in": 1
         }
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwks",
         return_value={"keys": []}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.get_jwk_from_jwt",
         return_value={"kid": "k"}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.verify_jws",
         return_value=True
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.unpad_jwt_payload",
         return_value={"sub": "user123", "at_hash": "x"}
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.verify_at_hash",
         return_value=True
     ), patch(
-        "cieoidc.endpoints.authorization_callback_endpoint.process_user_attributes",
+        "backends.cieoidc.endpoints.authorization_callback_endpoint.process_user_attributes",
         return_value=None
     ), patch(
-        "cieoidc.utils.clients.oidc.OidcUserInfo.get_userinfo",
+        "backends.cieoidc.utils.clients.oidc.OidcUserInfo.get_userinfo",
         return_value={"email": "test@example.com"}
     ):
         with pytest.raises(SATOSAAuthenticationError):

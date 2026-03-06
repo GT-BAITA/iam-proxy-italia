@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from satosa.context import Context
-from cieoidc.cieoidc import CieOidcBackend
+from backends.cieoidc.cieoidc import CieOidcBackend
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def minimal_config():
         ],
         "endpoints":{
             "test_endpoint": {
-                "module":"cieoidc.endpoints.extend_session_endpoint",
+                "module":"backends.cieoidc.endpoints.extend_session_endpoint",
                 "class":"ExtendSessionHandler",
                 "routes":"/extend_session",
                 "config": {
@@ -110,7 +110,7 @@ def test_start_auth_calls_authorization_endpoint(backend):
     assert res == "response"
 
 
-@patch("cieoidc.utils.endpoints_loader.EndpointsLoader")
+@patch("backends.cieoidc.utils.endpoints_loader.EndpointsLoader")
 def test_register_endpoints(mock_loader, backend):
     mock_instance = MagicMock()
     mock_instance.endpoint_instances = {
@@ -125,7 +125,7 @@ def test_register_endpoints(mock_loader, backend):
     assert "" in backend.endpoints
 
 
-@patch("cieoidc.cieoidc.get_metadata_desc_for_oauth_backend")
+@patch("backends.cieoidc.cieoidc.get_metadata_desc_for_oauth_backend")
 def test_get_metadata_desc(mock_meta, backend):
     mock_meta.return_value = "metadata-desc"
 
@@ -134,9 +134,9 @@ def test_get_metadata_desc(mock_meta, backend):
     mock_meta.assert_called_once_with(backend._client_id, backend.config)
     assert res == "metadata-desc"
 
-@patch("cieoidc.cieoidc.get_entity_configurations")
-@patch("cieoidc.cieoidc.EntityStatement")
-@patch("cieoidc.cieoidc.CieOidcBackend.generate_trust_chain")
+@patch("backends.cieoidc.cieoidc.get_entity_configurations")
+@patch("backends.cieoidc.cieoidc.EntityStatement")
+@patch("backends.cieoidc.cieoidc.CieOidcBackend.generate_trust_chain")
 def test_generate_trust_chains(
     mock_gen_tc,
     mock_entity_statement,
@@ -165,7 +165,7 @@ def test_generate_trust_chains(
     assert trust_chains["http://cie-provider.example.org"] == "trust-chain"
 
 
-@patch("cieoidc.cieoidc.TrustChainBuilder")
+@patch("backends.cieoidc.cieoidc.TrustChainBuilder")
 def test_generate_trust_chain(mock_tcb):
     mock_tc = MagicMock()
     mock_tcb.return_value = mock_tc

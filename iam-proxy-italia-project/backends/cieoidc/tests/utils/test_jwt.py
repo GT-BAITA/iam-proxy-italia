@@ -4,16 +4,16 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptojwt.jwk.rsa import RSAKey
 from cryptojwt.jwk.ec import ECKey
 from unittest.mock import patch
-from cieoidc.utils.helpers.jwtse import decrypt_jwe
+from backends.cieoidc.utils.helpers.jwtse import decrypt_jwe
 from cryptojwt.exception import UnsupportedAlgorithm
 
-from cieoidc.utils.helpers.jwtse import (
+from backends.cieoidc.utils.helpers.jwtse import (
     unpad_jwt_payload,
     create_jws,
     verify_at_hash,
 )
 
-from cieoidc.utils.helpers.jwtse import (
+from backends.cieoidc.utils.helpers.jwtse import (
     unpad_jwt_head,
     unpad_jwt_payload,
     create_jwe,

@@ -1,7 +1,7 @@
 import pytest
 from abc import ABC
-from cieoidc.storage.interfaces.storage import OidcStorage
-from cieoidc.models.oidc_auth import OidcAuthentication
+from backends.cieoidc.storage.interfaces.storage import OidcStorage
+from backends.cieoidc.models.oidc_auth import OidcAuthentication
 
 def test_oidc_storage_is_abstract():
     with pytest.raises(TypeError):

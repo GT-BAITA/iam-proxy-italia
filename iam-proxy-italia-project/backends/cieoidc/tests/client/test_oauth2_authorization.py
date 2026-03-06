@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cieoidc.utils.clients.oauth2 import (
+from backends.cieoidc.utils.clients.oauth2 import (
     OAuth2AuthorizationCodeGrant
 )
 
@@ -18,11 +18,11 @@ def grant():
         },
     )
 
-@patch("cieoidc.utils.clients.oauth2.requests.post")
-@patch("cieoidc.utils.clients.oauth2.create_jws")
-@patch("cieoidc.utils.clients.oauth2.get_key")
-@patch("cieoidc.utils.clients.oauth2.iat_now")
-@patch("cieoidc.utils.clients.oauth2.exp_from_now")
+@patch("backends.cieoidc.utils.clients.oauth2.requests.post")
+@patch("backends.cieoidc.utils.clients.oauth2.create_jws")
+@patch("backends.cieoidc.utils.clients.oauth2.get_key")
+@patch("backends.cieoidc.utils.clients.oauth2.iat_now")
+@patch("backends.cieoidc.utils.clients.oauth2.exp_from_now")
 def test_us01(
     mock_exp,
     mock_iat,
@@ -58,9 +58,9 @@ def test_us01(
     assert args[0] == "http://cie-provider.example.org:8002/oidc/op/token"
     assert kwargs["timeout"] == 5
 
-@patch("cieoidc.utils.clients.oauth2.requests.post")
-@patch("cieoidc.utils.clients.oauth2.create_jws")
-@patch("cieoidc.utils.clients.oauth2.get_key")
+@patch("backends.cieoidc.utils.clients.oauth2.requests.post")
+@patch("backends.cieoidc.utils.clients.oauth2.create_jws")
+@patch("backends.cieoidc.utils.clients.oauth2.get_key")
 def test_us02(
     mock_get_key,
     mock_create_jws,
@@ -85,11 +85,11 @@ def test_us02(
 
     assert result == mock_response
 
-@patch("cieoidc.utils.clients.oauth2.requests.post")
-@patch("cieoidc.utils.clients.oauth2.create_jws")
-@patch("cieoidc.utils.clients.oauth2.get_key")
-@patch("cieoidc.utils.clients.oauth2.iat_now")
-@patch("cieoidc.utils.clients.oauth2.exp_from_now")
+@patch("backends.cieoidc.utils.clients.oauth2.requests.post")
+@patch("backends.cieoidc.utils.clients.oauth2.create_jws")
+@patch("backends.cieoidc.utils.clients.oauth2.get_key")
+@patch("backends.cieoidc.utils.clients.oauth2.iat_now")
+@patch("backends.cieoidc.utils.clients.oauth2.exp_from_now")
 def test_us03(
     mock_exp,
     mock_iat,
@@ -119,8 +119,8 @@ def test_us03(
     assert result == mock_response
     mock_post.assert_called_once()
 
-@patch("cieoidc.utils.clients.oauth2.create_jws")
-@patch("cieoidc.utils.clients.oauth2.get_key")
+@patch("backends.cieoidc.utils.clients.oauth2.create_jws")
+@patch("backends.cieoidc.utils.clients.oauth2.get_key")
 def test_us04(
     mock_get_key,
     mock_create_jws,

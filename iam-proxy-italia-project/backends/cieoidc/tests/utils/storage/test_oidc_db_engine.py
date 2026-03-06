@@ -3,8 +3,8 @@ from datetime import datetime
 import pytest
 from unittest.mock import MagicMock, patch
 
-from cieoidc.storage.db_engine import OidcDbEngine
-from cieoidc.models.oidc_auth import OidcAuthentication
+from backends.cieoidc.storage.db_engine import OidcDbEngine
+from backends.cieoidc.models.oidc_auth import OidcAuthentication
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def fake_storage():
 @pytest.fixture
 def engine(fake_storage):
     with patch(
-        "cieoidc.storage.db_engine.dynamic_class_loader",
+        "backends.cieoidc.storage.db_engine.dynamic_class_loader",
         return_value=fake_storage
     ):
         return OidcDbEngine({

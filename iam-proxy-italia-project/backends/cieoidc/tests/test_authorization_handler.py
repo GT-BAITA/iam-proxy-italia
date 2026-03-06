@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from datetime import datetime, timezone
 
-from cieoidc.endpoints.authorization_endpoint import AuthorizationHandler
+from backends.cieoidc.endpoints.authorization_endpoint import AuthorizationHandler
 
 
 
@@ -76,7 +76,7 @@ def trust_chain():
 
 @pytest.fixture
 def handler(minimal_config, trust_chain):
-    with patch("cieoidc.storage.db_engine.OidcDbEngine") as db_mock:
+    with patch("backends.cieoidc.storage.db_engine.OidcDbEngine") as db_mock:
         db = db_mock.return_value
         db.connect.return_value = None
         db.add_session.return_value = 1
@@ -101,7 +101,7 @@ def test_us01(handler):
 def test_us02(minimal_config):
     del minimal_config["endpoints"]
 
-    with patch("cieoidc.storage.db_engine.OidcDbEngine"):
+    with patch("backends.cieoidc.storage.db_engine.OidcDbEngine"):
         handler = AuthorizationHandler(
             config=minimal_config,
             internal_attributes={},
@@ -116,9 +116,9 @@ def test_us02(minimal_config):
         handler._validate_configs()
 
 
-@patch("cieoidc.utils.helpers.misc.get_pkce")
-@patch("cieoidc.utils.helpers.jwtse.create_jws")
-@patch("cieoidc.utils.helpers.misc.get_key")
+@patch("backends.cieoidc.utils.helpers.misc.get_pkce")
+@patch("backends.cieoidc.utils.helpers.jwtse.create_jws")
+@patch("backends.cieoidc.utils.helpers.misc.get_key")
 @patch("satosa.response.Redirect")
 def test_us03(
     redirect_mock,
@@ -157,14 +157,14 @@ def test_us05():
     }
 
     with patch(
-        "cieoidc.utils.helpers.misc.http_dict_to_redirect_uri_path"
+        "backends.cieoidc.utils.helpers.misc.http_dict_to_redirect_uri_path"
     ) as uri_mock:
         uri_mock.return_value = "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
         uri = AuthorizationHandler.generate_uri(authz_data)
         assert uri == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
 
 
-@patch("cieoidc.models.oidc_auth.OidcAuthentication")
+@patch("backends.cieoidc.models.oidc_auth.OidcAuthentication")
 def test_us06(mock_auth, handler):
     handler._db_engine.add_session = MagicMock(return_value=1)
 
