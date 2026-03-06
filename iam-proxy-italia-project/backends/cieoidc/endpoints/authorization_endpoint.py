@@ -194,7 +194,7 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values="https://www.spid.gov.it/SpidL2",
+                acr_values=["https://www.spid.gov.it/SpidL2"],
                 # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
