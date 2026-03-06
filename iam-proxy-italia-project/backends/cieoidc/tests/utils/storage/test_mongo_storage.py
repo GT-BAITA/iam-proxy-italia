@@ -186,3 +186,4 @@ def test_remove_invalid_id(storage):
 
 def test_find_by_id_invalid(storage):
     assert storage._find_by_id("auth", 123, OidcAuthentication) is None
+
