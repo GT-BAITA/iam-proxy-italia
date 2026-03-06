@@ -1,12 +1,15 @@
 import json
 import logging
-
 from typing import Union
-from cryptojwt.jwk.jwk import key_from_jwk_dict
 
-from ..utils.helpers.misc import exp_from_now, iat_now
-from ..utils.helpers.jwks import serialize_rsa_key, private_pem_from_jwk, public_pem_from_jwk
-from ..utils.helpers.jwtse import create_jws
+from cieoidc.utils.helpers.jwks import (
+    private_pem_from_jwk,
+    public_pem_from_jwk,
+    serialize_rsa_key,
+)
+from cieoidc.utils.helpers.jwtse import create_jws
+from cieoidc.utils.helpers.misc import exp_from_now, iat_now
+from cryptojwt.jwk.jwk import key_from_jwk_dict
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +20,31 @@ ENTITY_TYPE_LEAFS = [
     "openid_credential_issuer",
     "oauth_resource",
     "wallet_provider",
-    "wallet_relying_party"
+    "wallet_relying_party",
 ]
+
+
 def is_leaf(statement_metadata):
     for _typ in ENTITY_TYPE_LEAFS:
         if _typ in statement_metadata:
-            return True # pragma: no cover
+            return True  # pragma: no cover
 
 
 class FederationEntityConfiguration:
-    def __init__(self, sub, exp, default_signature_alg, jwks_core, jwks_fed, entity_type, metadata,
-                 authority_hints= None, trust_marks=None, trust_mark_issuers=None, constraints=None):
+    def __init__(
+        self,
+        sub,
+        exp,
+        default_signature_alg,
+        jwks_core,
+        jwks_fed,
+        entity_type,
+        metadata,
+        authority_hints=None,
+        trust_marks=None,
+        trust_mark_issuers=None,
+        constraints=None,
+    ):
         self.sub = sub
         self.default_exp: int = exp
         self.default_signature_alg: str = default_signature_alg
@@ -97,7 +114,7 @@ class FederationEntityConfiguration:
 
         if self.authority_hints:
             conf["authority_hints"] = self.authority_hints
-        elif self.is_leaf: # pragma: no cover
+        elif self.is_leaf:  # pragma: no cover
             _msg = f"Entity {self.sub} is a leaf and requires authority_hints valued"
             logger.error(_msg)
 
@@ -119,12 +136,15 @@ class FederationEntityConfiguration:
 
     @property
     def fetch_endpoint(self) -> Union[str, None]:
-        metadata = self.entity_configuration_as_dict.get('metadata', {})
-        if 'federation_entity' in metadata:
-            return metadata['federation_entity'].get("federation_fetch_endpoint", None)
+        metadata = self.entity_configuration_as_dict.get("metadata", {})
+        if "federation_entity" in metadata:
+            return metadata["federation_entity"].get("federation_fetch_endpoint", None)
 
     def set_jwks_as_array(self):
-        for i in ('jwks_fed','jwks_core'):
+        for i in ("jwks_fed", "jwks_core"):
+            value = getattr(self, i)
+            if not isinstance(value, list):
+                setattr(self, i, [value])
             value = getattr(self, i)
             if not isinstance(value, list):
                 setattr(self, i, [value])

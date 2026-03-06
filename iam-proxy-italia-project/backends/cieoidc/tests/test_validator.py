@@ -1,16 +1,17 @@
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.utils.validators import (
-    validate_public_jwks,
-    validate_private_jwks,
-    validate_metadata_algs,
-    validate_metadata_algs_v1,
-    ValidationError,
-    SIGNING_ALG_VALUES_SUPPORTED,
+import pytest
+
+from cieoidc.utils.validators import (
     ENCRYPTION_ALG_VALUES_SUPPORTED,
     ENCRYPTION_ENC_SUPPORTED,
+    SIGNING_ALG_VALUES_SUPPORTED,
+    ValidationError,
+    validate_metadata_algs,
+    validate_metadata_algs_v1,
+    validate_private_jwks,
+    validate_public_jwks,
 )
 
 
@@ -133,4 +134,4 @@ def test_validate_metadata_algs_v1_none_supported_lists():
         signing_alg_values_supported=None,
         encryption_alg_values_supported=None,
         metadata=metadata,
-    )
+    )    )

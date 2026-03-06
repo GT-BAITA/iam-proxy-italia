@@ -1,22 +1,20 @@
-import uuid
-import pytest
 import os
-from backends.cieoidc.tests import settings_test
+import uuid
 from unittest.mock import MagicMock, patch
-from bson.binary import Binary
-from bson import ObjectId
-from pymongo.errors import PyMongoError, InvalidOperation
 
-from backends.cieoidc.storage.impl.mongo_storage import MongoStorage
-from backends.cieoidc.models.oidc_auth import OidcAuthentication
+import pytest
+from bson import ObjectId
+from bson.binary import Binary
+from cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.storage.impl.mongo_storage import MongoStorage
+from cieoidc.tests import settings_test
+from pymongo.errors import InvalidOperation, PyMongoError
 
 
 @pytest.fixture
 def mongo_conf():
-    return {
-        "url": settings_test.MONGO_URL,
-        "data_ttl": 3600
-    }
+    return {"url": settings_test.MONGO_URL, "data_ttl": 3600}
+
 
 @pytest.fixture
 def storage(mongo_conf):
@@ -63,7 +61,14 @@ def test_us06(storage):
 
 def test_us07(storage):
     uid = uuid.uuid4()
-    doc = {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client", "endpoint": "auth","data": "{}","provider_configuration": {}}
+    doc = {
+        "_id": Binary.from_uuid(uid),
+        "state": "x",
+        "client_id": "client",
+        "endpoint": "auth",
+        "data": "{}",
+        "provider_configuration": {},
+    }
 
     entity = storage._from_doc(doc, OidcAuthentication)
     assert entity.id == str(uid)
@@ -71,7 +76,9 @@ def test_us07(storage):
 
 def test_us08(storage):
     storage._MongoStorage__client = MagicMock()
-    storage._MongoStorage__client["testdb"]["auth"].insert_one.return_value.inserted_id = ObjectId()
+    storage._MongoStorage__client["testdb"][
+        "auth"
+    ].insert_one.return_value.inserted_id = ObjectId()
 
     entity = MagicMock()
     entity.model_dump.return_value = {}
@@ -82,7 +89,9 @@ def test_us08(storage):
 
 def test_us09(storage):
     storage._MongoStorage__client = MagicMock()
-    storage._MongoStorage__client["testdb"]["auth"].insert_one.side_effect = PyMongoError()
+    storage._MongoStorage__client["testdb"][
+        "auth"
+    ].insert_one.side_effect = PyMongoError()
 
     entity = MagicMock()
     entity.model_dump.return_value = {}
@@ -98,7 +107,9 @@ def test_us10(storage):
 
 def test_us11(storage):
     storage._MongoStorage__client = MagicMock()
-    storage._MongoStorage__client["testdb"]["auth"].update_one.return_value.modified_count = 1
+    storage._MongoStorage__client["testdb"][
+        "auth"
+    ].update_one.return_value.modified_count = 1
 
     entity = MagicMock()
     entity.id = str(uuid.uuid4())
@@ -109,7 +120,9 @@ def test_us11(storage):
 
 def test_us12(storage):
     storage._MongoStorage__client = MagicMock()
-    storage._MongoStorage__client["testdb"]["auth"].delete_one.return_value.deleted_count = 1
+    storage._MongoStorage__client["testdb"][
+        "auth"
+    ].delete_one.return_value.deleted_count = 1
     assert True
 
 
@@ -124,7 +137,14 @@ def test_us14(storage):
     storage._MongoStorage__client = MagicMock()
     uid = uuid.uuid4()
     storage._MongoStorage__client["testdb"]["auth"].find.return_value = [
-        {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client", "endpoint": "auth","data": "{}","provider_configuration": {}}
+        {
+            "_id": Binary.from_uuid(uid),
+            "state": "x",
+            "client_id": "client",
+            "endpoint": "auth",
+            "data": "{}",
+            "provider_configuration": {},
+        }
     ]
 
     res = storage._find_all("auth", {"state": "x"}, OidcAuthentication)
@@ -154,13 +174,17 @@ def test_us18(storage):
 def test_us19(storage):
     assert storage._to_uuid("not-a-uuid") is None
 
+
 def test_connect_and_close(storage):
     storage._MongoStorage__client = None
-    with patch("backends.cieoidc.storage.impl.mongo_storage.MongoClient") as mock_client:
+    with patch(
+        "backends.cieoidc.storage.impl.mongo_storage.MongoClient"
+    ) as mock_client:
         storage.connect()
         assert storage._MongoStorage__client == mock_client.return_value
         storage.close()
         assert storage._MongoStorage__client is None
+
 
 def test_is_connected(storage):
     storage._MongoStorage__client = MagicMock()
@@ -170,19 +194,28 @@ def test_is_connected(storage):
     storage._MongoStorage__client.server_info.side_effect = InvalidOperation
     assert storage.is_connected() is False
 
+
 def test_to_uuid_valid(storage):
     uid = str(uuid.uuid4())
     assert storage._to_uuid(uid) == uuid.UUID(uid)
 
 
 def test_update_no_id(storage):
-    entity = OidcAuthentication(state="s1", client_id="c1", code="code1", data="{}", provider_id="p1",endpoint="http://example.org",
-    provider_configuration={"config": "dummy"})
+    entity = OidcAuthentication(
+        state="s1",
+        client_id="c1",
+        code="code1",
+        data="{}",
+        provider_id="p1",
+        endpoint="http://example.org",
+        provider_configuration={"config": "dummy"},
+    )
     assert storage._update("auth", entity) is False
+
 
 def test_remove_invalid_id(storage):
     assert storage._remove("auth", 123) is False  # non string
 
+
 def test_find_by_id_invalid(storage):
     assert storage._find_by_id("auth", 123, OidcAuthentication) is None
-
