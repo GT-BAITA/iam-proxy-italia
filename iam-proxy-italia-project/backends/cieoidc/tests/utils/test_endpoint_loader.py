@@ -1,14 +1,12 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
-from satosa.attribute_mapping import AttributeMapper
+from unittest.mock import patch, MagicMock
+
 from satosa.context import Context
 from satosa.internal import InternalData
 from satosa.response import Response
+from satosa.attribute_mapping import AttributeMapper
 
 from cieoidc.utils.endpoints_loader import EndpointsLoader
-
-
 
 @pytest.fixture
 def base_params():
@@ -44,8 +42,7 @@ def test_init_with_invalid_endpoints_type_raises():
             name="test",
         )
 
-
-@patch("backends.cieoidc.utils.endpoints_loader.get_dynamic_class")
+@patch("cieoidc.utils.endpoints_loader.get_dynamic_class")
 def test_endpoint_loader_creates_instances(mock_get_class, base_params):
     mock_endpoint_instance = MagicMock()
     mock_endpoint_class = MagicMock(return_value=mock_endpoint_instance)
@@ -86,8 +83,7 @@ def test_endpoint_loader_creates_instances(mock_get_class, base_params):
     assert loader.endpoint_instances["authorize"] is mock_endpoint_instance
     assert loader.endpoint_instances["auth"] is mock_endpoint_instance
 
-
-@patch("backends.cieoidc.utils.endpoints_loader.get_dynamic_class")
+@patch("cieoidc.utils.endpoints_loader.get_dynamic_class")
 def test_endpoint_with_missing_fields_is_skipped(mock_get_class, base_params):
     config = {
         "endpoints": {
@@ -113,8 +109,7 @@ def test_endpoint_with_missing_fields_is_skipped(mock_get_class, base_params):
     assert loader.endpoint_instances == {}
     mock_get_class.assert_not_called()
 
-
-@patch("backends.cieoidc.utils.endpoints_loader.get_dynamic_class")
+@patch("cieoidc.utils.endpoints_loader.get_dynamic_class")
 def test_routes_without_leading_slash(mock_get_class, base_params):
     mock_endpoint_instance = MagicMock()
     mock_get_class.return_value = MagicMock(return_value=mock_endpoint_instance)
@@ -142,8 +137,7 @@ def test_routes_without_leading_slash(mock_get_class, base_params):
 
     assert "token" in loader.endpoint_instances
 
-
-@patch("backends.cieoidc.utils.endpoints_loader.get_dynamic_class")
+@patch("cieoidc.utils.endpoints_loader.get_dynamic_class")
 def test_endpoint_instantiated_with_correct_arguments(mock_get_class, base_params):
     endpoint_class = MagicMock()
     mock_get_class.return_value = endpoint_class
@@ -177,5 +171,4 @@ def test_endpoint_instantiated_with_correct_arguments(mock_get_class, base_param
         base_params["auth_callback_func"],
         base_params["converter"],
         base_params["trust_evaluator"],
-    )
     )
