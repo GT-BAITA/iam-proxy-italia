@@ -1,10 +1,10 @@
 import uuid
-
-from typing import Any
 from datetime import datetime, timezone
-from backends.cieoidc.models.oidc_auth import OidcAuthentication
-from backends.cieoidc.storage.interfaces.storage import OidcStorage
-from backends.cieoidc.utils.helpers.misc import dynamic_class_loader
+from typing import Any
+
+from cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.storage.interfaces.storage import OidcStorage
+from cieoidc.utils.helpers.misc import dynamic_class_loader
 
 
 class OidcDbEngine(OidcStorage):

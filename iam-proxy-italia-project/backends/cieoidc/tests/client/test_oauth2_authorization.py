@@ -1,10 +1,9 @@
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.utils.clients.oauth2 import (
-    OAuth2AuthorizationCodeGrant
-)
+import pytest
+from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
+
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
-import pytest
+import json
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.endpoints.authorization_endpoint import AuthorizationHandler
-
+import pytest
+from cieoidc.endpoints.authorization_endpoint import AuthorizationHandler
 
 @pytest.fixture
 def minimal_config():
@@ -17,7 +18,7 @@ def minimal_config():
                 "q": "z2QeMH4WtrdiWUET7JgZNX0TbcaVBgd2Gpo8JHnfnGOUsvO_euKGgqpCcxiWVXSlqffQyTgVzl4iMROP8bEaQwvueHurtziMDSy9Suumyktu3PbGgjqu_izRim8Xlg7sz8Hs2quJPII_fQ8BCoaWpg30osFZqCBarQM7CWhxR40",  # noqa: E501
                 "d": "n_ePK5DdOxqArf75tDGaViYrXDqRVk8zyl2dfKiiR0dXQJK7tbzJtHoGQeH4E-sw3_-Bc7OKY7DcbBWgHTijMRWj9LkAu9uCvqqGMaAroWH0aBcUmZAsNjcyUIyJ3_JRcNfUDiX3nVg67qe4ZWnMDogowaVZv3aXJiCvKE8aJK4BV_nF3Nt5R6zUYpjZQ8T1GDZCV3vza3qglDrXe8zoc-p8cLs3rJn7tMVSJVznCIqOfeM1VIg0I3n2bubYOx88sckHuDnfXTiTDlyq5IwDyBHmiIe3fpu-c4e1tiBmbOf2IqDCaX8SdpnU2gTj9YlZtRNqmh3NB_rksBKWLz3uIQ",  # noqa: E501
                 "e": "AQAB",
-                "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs"
+                "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs",
             }
         ],
         "prompt": "login",
@@ -28,10 +29,7 @@ def minimal_config():
                 "scope": "openid",
                 "claim": {"userinfo": {"email": None}},
                 "response_types": ["code"],
-                "code_challenge": {
-                    "length": 32,
-                    "method": "S256"
-                }
+                "code_challenge": {"length": 32, "method": "S256"},
             }
         },
         "endpoints": {
@@ -40,12 +38,12 @@ def minimal_config():
                     "metadata": {
                         "openid_relying_party": {
                             "client_id": "client123",
-                            "redirect_uris": ["https://localhost/callback"]
+                            "redirect_uris": ["https://localhost/callback"],
                         }
                     }
                 }
             }
-        }
+        },
     }
 
 
@@ -84,7 +82,7 @@ def handler(minimal_config, trust_chain):
             name="authz",
             auth_callback_func=MagicMock(),
             converter=MagicMock(),
-            trust_chains={"http://trust-anchor.example.org:5002": trust_chain}
+            trust_chains={"http://trust-anchor.example.org:5002": trust_chain},
         )
         return h
 
@@ -104,7 +102,7 @@ def test_us02(minimal_config):
             name="x",
             auth_callback_func=MagicMock(),
             converter=MagicMock(),
-            trust_chains={}
+            trust_chains={},
         )
 
     with pytest.raises(ValueError):
@@ -116,16 +114,11 @@ def test_us02(minimal_config):
 @patch("backends.cieoidc.utils.helpers.misc.get_key")
 @patch("satosa.response.Redirect")
 def test_us03(
-    redirect_mock,
-    get_key_mock,
-    create_jws_mock,
-    get_pkce_mock,
-    handler,
-    context
+    redirect_mock, get_key_mock, create_jws_mock, get_pkce_mock, handler, context
 ):
     get_pkce_mock.return_value = {
         "code_challenge": "abc",
-        "code_challenge_method": "S256"
+        "code_challenge_method": "S256",
     }
     get_key_mock.return_value = {"kty": "RSA"}
     create_jws_mock.return_value = "signed.jwt"
@@ -134,7 +127,9 @@ def test_us03(
 
 
 def test_us04(handler):
-    handler.config["metadata"]["openid_relying_party"]["code_challenge"]["length"] = None
+    handler.config["metadata"]["openid_relying_party"]["code_challenge"][
+        "length"
+    ] = None
 
     with pytest.raises(ValueError):
         handler._AuthorizationHandler__pkce_generation({})
@@ -147,7 +142,7 @@ def test_us05():
         "response_type": "code",
         "code_challenge": "abc",
         "code_challenge_method": "S256",
-        "request": "jwt"
+        "request": "jwt",
     }
 
     with patch(
@@ -158,9 +153,9 @@ def test_us05():
             "code_challenge=abc&code_challenge_method=S256&request=jwt"
         )
         uri = AuthorizationHandler.generate_uri(authz_data)
-        assert uri == (
-            "client_id=client123&scope=openid&response_type=code&"
-            "code_challenge=abc&code_challenge_method=S256&request=jwt"
+        assert (
+            uri
+            == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
         )
 
 
@@ -174,7 +169,7 @@ def test_us06(mock_auth, handler):
         "endpoint": "x",
         "provider_id": "y",
         "data": "{}",
-        "provider_configuration": {}
+        "provider_configuration": {},
     }
     handler._AuthorizationHandler__insert(auth_obj)
 

@@ -1,30 +1,21 @@
 import json
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from backends.cieoidc.models.federation import FederationEntityConfiguration, is_leaf
+import pytest
+from cieoidc.models.federation import FederationEntityConfiguration, is_leaf
+
 
 
 @pytest.fixture
 def jwk_example():
-    return [{
-        "kty": "RSA",
-        "kid": "key1",
-        "n": "modulus",
-        "e": "AQAB",
-        "d": "private"
-    }]
+    return [{"kty": "RSA", "kid": "key1", "n": "modulus", "e": "AQAB", "d": "private"}]
+
 
 
 @pytest.fixture
 def jwks_example():
-    return [{
-        "kty": "RSA",
-        "kid": "key1",
-        "n": "modulus",
-        "e": "AQAB",
-        "d": "private"
-    }]
+    return [{"kty": "RSA", "kid": "key1", "n": "modulus", "e": "AQAB", "d": "private"}]
+
 
 
 @pytest.fixture
@@ -47,7 +38,7 @@ def federation_entity(jwk_example, metadata_leaf):
         jwks_fed=jwk_example,
         entity_type="openid_relying_party",
         metadata=metadata_leaf,
-        authority_hints=["https://trust-anchor.example.org"]
+        authority_hints=["https://trust-anchor.example.org"],
     )
 
 
@@ -91,7 +82,8 @@ def test_us05(federation_entity):
     with patch(
         "backends.cieoidc.models.federation.FederationEntityConfiguration.pems_as_dict",
         new_callable=PropertyMock,
-            return_value={"k": "v"}):
+        return_value={"k": "v"},
+    ):
         res = federation_entity.pems_as_json
         assert json.loads(res) == {"k": "v"}
 
@@ -138,7 +130,9 @@ def test_us11(mock_create_jws, federation_entity):
 
 
 def test_us12(federation_entity):
-    federation_entity.metadata["federation_entity"] = {"federation_fetch_endpoint": "https://fetch.example"}
+    federation_entity.metadata["federation_entity"] = {
+        "federation_fetch_endpoint": "https://fetch.example"
+    }
     assert federation_entity.fetch_endpoint == "https://fetch.example"
 
 
@@ -146,5 +140,7 @@ def test_us13(federation_entity):
     federation_entity.jwks_fed = {"k": "v"}
     federation_entity.jwks_core = {"k": "v"}
     federation_entity.set_jwks_as_array()
+    assert isinstance(federation_entity.jwks_fed, list)
+    assert isinstance(federation_entity.jwks_core, list)
     assert isinstance(federation_entity.jwks_fed, list)
     assert isinstance(federation_entity.jwks_core, list)

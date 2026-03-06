@@ -1,10 +1,14 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from satosa.context import Context
-from satosa.response import Response
-from backends.cieoidc.endpoints.authorization_callback_endpoint import AuthorizationCallBackHandler
-from ..utils.clients.oidc import OidcUserInfo
 from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
+from satosa.response import Response
+
+from cieoidc.endpoints.authorization_callback_endpoint import (
+    AuthorizationCallBackHandler,
+)
+from ..utils.clients.oidc import OidcUserInfo
 
 
 @pytest.fixture(autouse=True)
@@ -446,6 +450,10 @@ def test_update_authorization_db_failure(handler):
         "state": "s",
         "provider_id": "i",
         "client_id": "c",
+        "data": "{}",
+        "provider_configuration": {}
+    }
+    handler._AuthorizationCallBackHandler__update_authorization(auth)
         "data": "{}",
         "provider_configuration": {}
     }

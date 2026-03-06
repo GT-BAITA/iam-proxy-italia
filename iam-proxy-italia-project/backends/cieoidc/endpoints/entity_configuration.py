@@ -1,19 +1,17 @@
 import copy
 import json
 import logging
-
 from typing import Callable
 
+from cieoidc.models.federation import FederationEntityConfiguration
+from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
+from cieoidc.utils.helpers.jwks import public_jwk_from_private_jwk
+from cieoidc.utils.helpers.jwtse import create_jws
+from cieoidc.utils.validators import validate_entity_metadata, validate_private_jwks
 from satosa.attribute_mapping import AttributeMapper
 from satosa.context import Context
 from satosa.internal import InternalData
-from satosa.response import Response, Redirect
-
-from ..models.federation import FederationEntityConfiguration
-from ..utils.validators import validate_private_jwks, validate_entity_metadata
-from ..utils.helpers.jwks import public_jwk_from_private_jwk
-from ..utils.handlers.base_endpoint import BaseEndpoint
-from ..utils.helpers.jwtse import create_jws
+from satosa.response import Redirect, Response
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +22,19 @@ class EntityConfigHandler(BaseEndpoint):
     OIDC_JSON_JWS_URL = "openid_relying_party/jwks.json"
     OIDC_JOSE_JWS_URL = "openid_relying_party/jwks.jose"
 
-    def __init__(self, config: dict,
-                 internal_attributes: dict[str, dict[str, str | list[str]]],
-                 base_url: str,
-                 name: str,
-                 auth_callback_func: Callable[[Context, InternalData], Response],
-                 converter: AttributeMapper,
-                 trust) -> None:
-        super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
+    def __init__(
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
+        trust,
+    ) -> None:
+        super().__init__(
+            config, internal_attributes, base_url, name, auth_callback_func, converter
+        )
         self._jwks_federation = self.config.get("jwks_federation")
         self._jwks_core = self.config.get("jwks_core")
         self._default_sig_alg = self.config.get("default_sig_alg", "RS256")
@@ -39,8 +42,10 @@ class EntityConfigHandler(BaseEndpoint):
         self._trust_marks = self.config.get("trust_marks")
         self._entity_configuration_exp = self.config.get("entity_configuration_exp")
         self._entity_type = self.config.get("entity_type")
-        meta = self.config.get("metadata", {}).get(self._entity_type, {})
-        self._client_id = meta.get("client_id") or f"{base_url}/{name}"
+        self._client_id = (
+            self.config.get("metadata", {}).get(self._entity_type, {}).get("client_id")
+            or f"{base_url}/{name}"
+        )
         self._validate_configs()
 
     @property
@@ -48,7 +53,9 @@ class EntityConfigHandler(BaseEndpoint):
         _meta = copy.deepcopy(self.config.get("metadata", {}))
         _meta[self._entity_type]["client_id"] = self._client_id
         _meta[self._entity_type]["jwks"] = {}
-        _meta[self._entity_type]["jwks"]["keys"] = [public_jwk_from_private_jwk(_k) for _k in self._jwks_core]
+        _meta[self._entity_type]["jwks"]["keys"] = [
+            public_jwk_from_private_jwk(_k) for _k in self._jwks_core
+        ]
         return _meta
 
     def _validate_configs(self):
@@ -68,7 +75,11 @@ class EntityConfigHandler(BaseEndpoint):
             self._auth_hints,
             self._trust_marks,
         )
-        return _entity.entity_configuration_as_jws if jws else json.dumps(_entity.entity_configuration_as_dict)
+        return (
+            _entity.entity_configuration_as_jws
+            if jws
+            else json.dumps(_entity.entity_configuration_as_dict)
+        )
 
     def get_openid_jwks(self, jws=False) -> str:
         pub_keys = [public_jwk_from_private_jwk(_k) for _k in self._jwks_core]
@@ -91,7 +102,10 @@ class EntityConfigHandler(BaseEndpoint):
         content_type = "text/plain"
         data = ""
 
-        if context.path == f"{context.target_backend}/{self.OIDCFED_FEDERATION_WELLKNOWN_URL}":
+        if (
+            context.path
+            == f"{context.target_backend}/{self.OIDCFED_FEDERATION_WELLKNOWN_URL}"
+        ):
             status_code = "200"
 
             if context.qs_params.get("format", "") == "json":

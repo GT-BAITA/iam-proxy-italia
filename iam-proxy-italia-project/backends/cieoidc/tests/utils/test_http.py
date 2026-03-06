@@ -1,13 +1,12 @@
-from backends.cieoidc.utils.helpers.misc import cacheable_get_http_url
-from backends.cieoidc.utils.exceptions import HttpError
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import aiohttp
 import pytest
 import requests
+from cieoidc.utils.exceptions import HttpError
+from cieoidc.utils.helpers.http import fetch, fetch_all, http_get_async, http_get_sync
+from cieoidc.utils.helpers.misc import cacheable_get_http_url
 
-from backends.cieoidc.utils.helpers.http import (
-    http_get_sync,
-    fetch_all,
-)
 
 
 def test_us01():
@@ -53,7 +52,7 @@ async def test_us04():
 async def test_us05():
     with patch(
         "backends.cieoidc.utils.helpers.http.asyncio.gather",
-        side_effect=OSError("connection failed")
+        side_effect=OSError("connection failed"),
     ):
         with pytest.raises((HttpError, OSError)):
             await fetch_all(MagicMock(), ["http://example.com"])
@@ -65,7 +64,7 @@ def test_us06():
 
     with patch(
         "backends.cieoidc.utils.helpers.misc._lru_cached_get_http_url",
-        return_value=resp
+        return_value=resp,
     ):
         r = cacheable_get_http_url(
             cache_ttl=10,

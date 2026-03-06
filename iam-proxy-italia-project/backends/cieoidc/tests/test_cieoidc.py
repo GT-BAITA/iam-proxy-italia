@@ -1,40 +1,29 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
+from cieoidc.cieoidc import CieOidcBackend
 from satosa.context import Context
-from backends.cieoidc.cieoidc import CieOidcBackend
 
 
 @pytest.fixture
 def minimal_config():
     return {
-        "metadata": {
-            "openid_relying_party": {
-                "client_id": "client123"
-            }
-        },
+        "metadata": {"openid_relying_party": {"client_id": "client123"}},
         "trust_chain": {
             "config": {
                 "httpc_params": {},
-                "trust_anchor": ["http://trust-anchor.example.org:5002"]
+                "trust_anchor": ["http://trust-anchor.example.org:5002"],
             }
         },
-        "providers": [
-            "http://cie-provider.example.org"
-        ],
+        "providers": ["http://cie-provider.example.org"],
         "endpoints": {
             "test_endpoint": {
                 "module": "backends.cieoidc.endpoints.extend_session_endpoint",
                 "class": "ExtendSessionHandler",
                 "routes": "/extend_session",
-                "config": {
-                    "httpc_params": {
-                        "connection": "false",
-                        "session": "6"
-                    }
-                }
+                "config": {"httpc_params": {"connection": "false", "session": "6"}},
             }
-        }
+        },
     }
 
 
@@ -42,43 +31,25 @@ def minimal_config():
 def internal_attributes():
     return {
         "attributes": {
-            "username": {
-                "oidc": ["preferred_username", "sub"],
-                "spid": ["spid_code"]
-            },
-            "first_name": {
-                "oidc": ["given_name"],
-                "ldap": ["cn"]
-            },
-            "last_name": {
-                "oidc": ["family_name"],
-                "ldap": ["sn"]
-            },
-            "email": {
-                "oidc": ["email"],
-                "ldap": ["mail"]
-            },
-            "fiscal_number": {
-                "oidc": ["https://attributes.eid.gov.it/fiscal_number"]
-            }
+            "username": {"oidc": ["preferred_username", "sub"], "spid": ["spid_code"]},
+            "first_name": {"oidc": ["given_name"], "ldap": ["cn"]},
+            "last_name": {"oidc": ["family_name"], "ldap": ["sn"]},
+            "email": {"oidc": ["email"], "ldap": ["mail"]},
+            "fiscal_number": {"oidc": ["https://attributes.eid.gov.it/fiscal_number"]},
         },
-        "template_attributes": {
-            "full_name": "{first_name} {last_name}"
-        }
+        "template_attributes": {"full_name": "{first_name} {last_name}"},
     }
 
 
 @pytest.fixture
 def backend(minimal_config, internal_attributes):
-    with patch.object(
-        CieOidcBackend, "_generate_trust_chains", return_value={}
-    ):
+    with patch.object(CieOidcBackend, "_generate_trust_chains", return_value={}):
         backend = CieOidcBackend(
             callback=MagicMock(),
             internal_attributes=internal_attributes,
             module_config=minimal_config,
             base_url="http://localhost",
-            name="test_endpoint"
+            name="test_endpoint",
         )
         return backend
 
@@ -87,7 +58,9 @@ def test_initialization_sets_client_id(backend):
     assert backend._client_id == "client123"
 
 
-def test_initialization_calls_generate_trust_chains(minimal_config, internal_attributes):
+def test_initialization_calls_generate_trust_chains(
+    minimal_config, internal_attributes
+):
     with patch.object(
         CieOidcBackend, "_generate_trust_chains", return_value={}
     ) as mock_tc:
@@ -96,7 +69,7 @@ def test_initialization_calls_generate_trust_chains(minimal_config, internal_att
             internal_attributes=internal_attributes,
             module_config=minimal_config,
             base_url="http://localhost",
-            name="test_endpoint"
+            name="test_endpoint",
         )
         mock_tc.assert_called_once()
 
@@ -121,7 +94,7 @@ def test_register_endpoints(mock_loader, backend):
     mock_instance = MagicMock()
     mock_instance.endpoint_instances = {
         "authorization": MagicMock(),
-        "token": MagicMock()
+        "token": MagicMock(),
     }
 
     mock_loader.return_value = mock_instance
@@ -145,12 +118,13 @@ def test_get_metadata_desc(mock_meta, backend):
 @patch("backends.cieoidc.cieoidc.EntityStatement")
 @patch("backends.cieoidc.cieoidc.CieOidcBackend.generate_trust_chain")
 def test_generate_trust_chains(
-        mock_gen_tc,
-        mock_entity_statement,
-        mock_get_ec,
-        minimal_config,
-        internal_attributes,
-        backend):
+    mock_gen_tc,
+    mock_entity_statement,
+    mock_get_ec,
+    minimal_config,
+    internal_attributes,
+    backend,
+):
     mock_get_ec.return_value = ["jwt"]
     mock_ec = MagicMock()
     mock_ec.sub = "ta"
@@ -162,7 +136,7 @@ def test_generate_trust_chains(
         internal_attributes=internal_attributes,
         module_config=minimal_config,
         base_url="http://localhost",
-        name="cie"
+        name="cie",
     )
 
     trust_chains = backend.trust_chain
@@ -180,9 +154,7 @@ def test_generate_trust_chain(mock_tcb):
     trust_anchor_ec.sub = "ta"
 
     res = CieOidcBackend.generate_trust_chain(
-        trust_anchor_ec,
-        "https://cie-provider.example.org",
-        httpc_params={}
+        trust_anchor_ec, "https://cie-provider.example.org", httpc_params={}
     )
     mock_tc.start.assert_called_once()
     mock_tc.apply_metadata_policy.assert_called_once()

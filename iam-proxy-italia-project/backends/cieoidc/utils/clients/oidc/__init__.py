@@ -1,14 +1,10 @@
 import logging
-import requests
 
-from backends.cieoidc.utils.exceptions import UnknownKid
-from backends.cieoidc.utils.helpers.jwtse import (
-    unpad_jwt_head,
-    decrypt_jwe,
-    verify_jws
-)
-from backends.cieoidc.utils.helpers.misc import get_jwks
-from ...helpers.configuration_utils import ConfigurationPlugin
+import requests
+from cieoidc.utils.exceptions import UnknownKid
+from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
+from cieoidc.utils.helpers.jwtse import decrypt_jwe, unpad_jwt_head, verify_jws
+from cieoidc.utils.helpers.misc import get_jwks
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +14,9 @@ class OidcUserInfo(object):
     https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
     """
 
-    def __init__(self, provider_configuration: dict, jwks_core: dict, httpc_params: dict):
+    def __init__(
+        self, provider_configuration: dict, jwks_core: dict, httpc_params: dict
+    ):
         self.provider_configuration = provider_configuration
         self.jwks_core = jwks_core
         self.httpc_params = httpc_params
@@ -30,7 +28,12 @@ class OidcUserInfo(object):
         raise UnknownKid()  # pragma: no cover
 
     def get_userinfo(
-        self, state: str, access_token: str, verify: bool, timeout: int, configuration_utils: ConfigurationPlugin
+        self,
+        state: str,
+        access_token: str,
+        verify: bool,
+        timeout: int,
+        configuration_utils: ConfigurationPlugin,
     ):
         """
         User Info endpoint request with bearer access token
@@ -41,7 +44,7 @@ class OidcUserInfo(object):
             self.provider_configuration["userinfo_endpoint"],
             headers=headers,
             verify=verify,
-            timeout=timeout
+            timeout=timeout,
         )
 
         if authz_userinfo.status_code != 200:  # pragma: no cover
@@ -62,10 +65,13 @@ class OidcUserInfo(object):
                 header = unpad_jwt_head(jwe)
                 # header["kid"] kid di rp
                 rp_jwk = self.__get_jwk(header["kid"], self.jwks_core)
-                jws = decrypt_jwe(jwe, rp_jwk,
-                                  configuration_utils.get_default_jwe_alg,
-                                  configuration_utils.get_default_jwe_enc,
-                                  configuration_utils.get_encryption_alg_values_supported)
+                jws = decrypt_jwe(
+                    jwe,
+                    rp_jwk,
+                    configuration_utils.get_default_jwe_alg,
+                    configuration_utils.get_default_jwe_enc,
+                    configuration_utils.get_encryption_alg_values_supported,
+                )
 
                 if isinstance(jws, bytes):
                     jws = jws.decode()
@@ -74,7 +80,9 @@ class OidcUserInfo(object):
                 idp_jwks = get_jwks(self.provider_configuration, self.httpc_params)
                 idp_jwk = self.__get_jwk(header["kid"], idp_jwks)
 
-                decoded_jwt = verify_jws(jws, idp_jwk, configuration_utils.get_signing_alg_values_supported)
+                decoded_jwt = verify_jws(
+                    jws, idp_jwk, configuration_utils.get_signing_alg_values_supported
+                )
                 logger.debug(f"Userinfo endpoint result: {decoded_jwt}")
                 return decoded_jwt
 

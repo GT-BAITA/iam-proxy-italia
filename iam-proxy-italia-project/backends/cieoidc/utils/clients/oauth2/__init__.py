@@ -1,22 +1,17 @@
-import logging
-import json
 import inspect
+import json
+import logging
 import uuid
+
 import requests
-
-from backends.cieoidc.utils import KeyUsage
-from backends.cieoidc.utils.helpers.misc import (
-    get_key,
-    iat_now, exp_from_now
-)
-from backends.cieoidc.utils.helpers.jwtse import create_jws
-
+from cieoidc.utils import KeyUsage
+from cieoidc.utils.helpers.jwtse import create_jws, unpad_jwt_payload, verify_at_hash
+from cieoidc.utils.helpers.misc import exp_from_now, get_key, iat_now
 
 logger = logging.getLogger(__name__)
 
 
 class OAuth2AuthorizationCodeGrant(object):
-
     """
     https://tools.ietf.org/html/rfc6749
     """
@@ -41,10 +36,8 @@ class OAuth2AuthorizationCodeGrant(object):
         https://tools.ietf.org/html/rfc6749#section-4.1.3
         """
         logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
-            f"Params[redirect_uri: {redirect_uri}, state: {state}, code: {code}, "
-            f"client_id: {client_id}, token_endpoint: {token_endpoint_url}, "
-            f"code_verifier: {code_verifier}]"
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
+            f"Params[redirect_uri: {redirect_uri}, state: {state}, code: {code}, client_id: {client_id}, token_endpoint: {token_endpoint_url}, code_verifier: {code_verifier}]"
         )
 
         grant_data = dict(
@@ -90,12 +83,13 @@ class OAuth2AuthorizationCodeGrant(object):
 
     def refresh_token(self, authorization: dict, client_id: str):
 
-        logger.debug(f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
-                     f"Params[Client_id: {client_id}]")
+        logger.debug(
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
+            f"Params[Client_id: {client_id}]"
+        )
 
         token_request_data = dict(
-            client_id=client_id,
-            client_assertion_type=self.client_assertion_type
+            client_id=client_id, client_assertion_type=self.client_assertion_type
         )
 
         token_request_data["grant_type"] = self.grant_type
@@ -105,9 +99,7 @@ class OAuth2AuthorizationCodeGrant(object):
         audience = authorization["provider_configuration"].get("token_endpoint")
 
         if not audience:
-            logger.warning(
-                "Provider doesn't expose the token endpoint."
-            )
+            logger.warning("Provider doesn't expose the token endpoint.")
             # @TODO Talking with Giuseppe for rendering raise exception?
 
         rp_conf = self.__get_rp_conf(client_id)
@@ -119,9 +111,9 @@ class OAuth2AuthorizationCodeGrant(object):
                 "aud": [audience],
                 "iat": iat_now(),
                 "exp": exp_from_now(),
-                "jti": str(uuid.uuid4())
+                "jti": str(uuid.uuid4()),
             },
-            jwk_dict=get_key(rp_conf.get("jwks_core"))  # @TODO get RP from DB
+            jwk_dict=get_key(rp_conf.get("jwks_core")),  # @TODO get RP from DB
         )
         token_request_data["client_assertion"] = client_assertion
 
@@ -129,7 +121,7 @@ class OAuth2AuthorizationCodeGrant(object):
             token_request = requests.post(
                 audience,
                 data=token_request_data,
-                timeout=self.httpc_params["session"].get("timeout")
+                timeout=self.httpc_params["session"].get("timeout"),
             )  # nosec - B113
 
             if token_request.status_code != 200:  # pragma: no cover
@@ -146,8 +138,10 @@ class OAuth2AuthorizationCodeGrant(object):
         """
         Get Relaying Party configuration from client ID
         """
-        logger.debug(f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
-                     f"Params[client_id: {client_id}]")
+        logger.debug(
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
+            f"Params[client_id: {client_id}]"
+        )
         rf_conf = {}
         #  @TODO Get RP from DB
         return rf_conf

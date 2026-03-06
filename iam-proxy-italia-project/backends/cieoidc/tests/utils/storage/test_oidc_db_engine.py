@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
-import pytest
 from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.storage.db_engine import OidcDbEngine
-from backends.cieoidc.models.oidc_auth import OidcAuthentication
+import pytest
+from cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.storage.db_engine import OidcDbEngine
 
 
 @pytest.fixture
@@ -23,15 +23,9 @@ def fake_storage():
 def engine(fake_storage):
     with patch(
         "backends.cieoidc.storage.db_engine.dynamic_class_loader",
-        return_value=fake_storage
+        return_value=fake_storage,
     ):
-        return OidcDbEngine({
-            "mongo": {
-                "module": "x",
-                "class": "y",
-                "init_params": {}
-            }
-        })
+        return OidcDbEngine({"mongo": {"module": "x", "class": "y", "init_params": {}}})
 
 
 def test_connect(engine, fake_storage):
@@ -55,7 +49,7 @@ def test_add_session(engine):
         endpoint="e",
         provider_id="p",
         data="{}",
-        provider_configuration={}
+        provider_configuration={},
     )
     res = engine.add_session(entity)
     assert res == 1
@@ -87,4 +81,5 @@ def test_prepare_for_insert_sets_dates(engine):
 
     assert entity.created is not None
     assert entity.modified is not None
+    assert isinstance(entity.modified, datetime)
     assert isinstance(entity.modified, datetime)

@@ -1,19 +1,20 @@
-import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptojwt.jwk.rsa import RSAKey
-from cryptojwt.jwk.ec import ECKey
 from unittest.mock import patch
-from cryptojwt.jws.utils import left_hash
 
-from backends.cieoidc.utils.helpers.jwtse import (
+import pytest
+from cieoidc.utils.helpers.jwtse import (
+    create_jwe,
+    create_jws,
+    decrypt_jwe,
     unpad_jwt_head,
     unpad_jwt_payload,
-    create_jwe,
-    decrypt_jwe,
-    create_jws,
     verify_at_hash,
+    verify_jws,
 )
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptojwt.exception import UnsupportedAlgorithm
+from cryptojwt.jwk.ec import ECKey
+from cryptojwt.jwk.rsa import RSAKey
+from cryptojwt.jws.utils import left_hash
 
 
 @pytest.fixture
@@ -39,11 +40,7 @@ def ec_jwk():
 
 
 def test_us01():
-    jwt = (
-        "eyJhbGciOiJSUzI1NiJ9."
-        "eyJzdWIiOiJ1c2VyMTIzIn0."
-        "signature"
-    )
+    jwt = "eyJhbGciOiJSUzI1NiJ9." "eyJzdWIiOiJ1c2VyMTIzIn0." "signature"
     payload = unpad_jwt_payload(jwt)
     assert payload["sub"] == "user123"
 
@@ -58,7 +55,7 @@ def test_us02():
         "q": "z2QeMH4WtrdiWUET7JgZNX0TbcaVBgd2Gpo8JHnfnGOUsvO_euKGgqpCcxiWVXSlqffQyTgVzl4iMROP8bEaQwvueHurtziMDSy9Suumyktu3PbGgjqu_izRim8Xlg7sz8Hs2quJPII_fQ8BCoaWpg30osFZqCBarQM7CWhxR40",  # noqa: E501
         "d": "n_ePK5DdOxqArf75tDGaViYrXDqRVk8zyl2dfKiiR0dXQJK7tbzJtHoGQeH4E-sw3_-Bc7OKY7DcbBWgHTijMRWj9LkAu9uCvqqGMaAroWH0aBcUmZAsNjcyUIyJ3_JRcNfUDiX3nVg67qe4ZWnMDogowaVZv3aXJiCvKE8aJK4BV_nF3Nt5R6zUYpjZQ8T1GDZCV3vza3qglDrXe8zoc-p8cLs3rJn7tMVSJVznCIqOfeM1VIg0I3n2bubYOx88sckHuDnfXTiTDlyq5IwDyBHmiIe3fpu-c4e1tiBmbOf2IqDCaX8SdpnU2gTj9YlZtRNqmh3NB_rksBKWLz3uIQ",  # noqa: E501
         "e": "AQAB",
-        "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs"
+        "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs",
     }
 
     with patch("cryptojwt.jwk.jwk.key_from_jwk_dict"):

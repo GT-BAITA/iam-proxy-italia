@@ -1,6 +1,9 @@
+from abc import ABC
+
 import pytest
-from backends.cieoidc.storage.interfaces.storage import OidcStorage
-from backends.cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.storage.interfaces.storage import OidcStorage
+
 
 
 def test_oidc_storage_is_abstract():
@@ -58,6 +61,9 @@ def test_dummy_storage_methods_contract():
 
     result_update = storage.update_session(entity=None)
     assert isinstance(result_update, int)
+
+    result_get = storage.get_sessions("state123")
+    assert isinstance(result_get, list)
 
     result_get = storage.get_sessions("state123")
     assert isinstance(result_get, list)

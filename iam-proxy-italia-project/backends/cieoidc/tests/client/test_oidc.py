@@ -1,15 +1,18 @@
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.utils.clients.oidc import OidcUserInfo
-from backends.cieoidc.utils.exceptions import UnknownKid
-from backends.cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
+import pytest
+from cieoidc.utils.clients.oidc import OidcUserInfo
+from cieoidc.utils.exceptions import UnknownKid
+from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
+
 
 
 @pytest.fixture
 def provider_config():
-    return {"userinfo_endpoint": "http://cie-provider.example.org:8002/oidc/op/userinfo"}
+    return {
+        "userinfo_endpoint": "http://cie-provider.example.org:8002/oidc/op/userinfo"
+    }
 
 
 @pytest.fixture
@@ -85,16 +88,21 @@ def test_us02(mock_get, userinfo, configuration_utils):
 @patch("backends.cieoidc.utils.clients.oidc.decrypt_jwe")
 @patch("backends.cieoidc.utils.clients.oidc.get_jwks")
 @patch("backends.cieoidc.utils.clients.oidc.verify_jws")
-def test_us03(mock_verify, mock_get_jwks, mock_decrypt, mock_unpad, mock_get, userinfo, configuration_utils):
+def test_us03(
+    mock_verify,
+    mock_get_jwks,
+    mock_decrypt,
+    mock_unpad,
+    mock_get,
+    userinfo,
+    configuration_utils,
+):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.content = b"fake-jwe"
     mock_response.json.side_effect = Exception("not json")
     mock_get.return_value = mock_response
-    mock_unpad.side_effect = [
-        {"kid": "core-kid"},
-        {"kid": "idp-kid"}
-    ]
+    mock_unpad.side_effect = [{"kid": "core-kid"}, {"kid": "idp-kid"}]
 
     mock_decrypt.return_value = b"fake-jws"
     mock_get_jwks.return_value = [{"kid": "idp-kid"}]
@@ -118,7 +126,9 @@ def test_us04(mock_get, userinfo, configuration_utils):
     mock_response.content = b"fake"
     mock_response.json.side_effect = Exception("not json")
     mock_get.return_value = mock_response
-    userinfo._OidcUserInfo__get_jwk = lambda kid, jwks: (_ for _ in ()).throw(UnknownKid())
+    userinfo._OidcUserInfo__get_jwk = lambda kid, jwks: (_ for _ in ()).throw(
+        UnknownKid()
+    )
 
     result = userinfo.get_userinfo(
         state="state123",

@@ -1,12 +1,17 @@
-import pytest
-from unittest.mock import patch, MagicMock
+import json
+from unittest.mock import MagicMock, patch
 
-from backends.cieoidc.utils.validators import (
-    validate_public_jwks,
-    validate_private_jwks,
+import pytest
+
+from cieoidc.utils.validators import (
+    ENCRYPTION_ALG_VALUES_SUPPORTED,
+    ENCRYPTION_ENC_SUPPORTED,
+    SIGNING_ALG_VALUES_SUPPORTED,
+    ValidationError,
     validate_metadata_algs,
     validate_metadata_algs_v1,
-    ValidationError,
+    validate_private_jwks,
+    validate_public_jwks,
 )
 
 

@@ -1,10 +1,13 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-
-from satosa.response import Response
 from satosa.attribute_mapping import AttributeMapper
+from satosa.context import Context
+from satosa.internal import InternalData
+from satosa.response import Response
 
-from backends.cieoidc.utils.endpoints_loader import EndpointsLoader
+from cieoidc.utils.endpoints_loader import EndpointsLoader
+
 
 
 @pytest.fixture
@@ -174,4 +177,5 @@ def test_endpoint_instantiated_with_correct_arguments(mock_get_class, base_param
         base_params["auth_callback_func"],
         base_params["converter"],
         base_params["trust_evaluator"],
+    )
     )

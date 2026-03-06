@@ -1,10 +1,11 @@
 import logging
-import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from satosa.context import Context
 
-from backends.cieoidc.utils.base_logger import BaseLogger
+from cieoidc.utils.base_logger import BaseLogger
+
 
 
 @pytest.fixture
@@ -96,4 +97,5 @@ def test_effective_log_level_returns_logger_level(base_logger):
     assert isinstance(level, int)
     assert level == logging.getLogger(
         "backends.cieoidc.utils.base_logger"
+    ).getEffectiveLevel()
     ).getEffectiveLevel()

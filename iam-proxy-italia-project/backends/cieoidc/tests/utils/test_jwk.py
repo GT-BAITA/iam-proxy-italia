@@ -1,7 +1,9 @@
-from backends.cieoidc.utils.helpers.jwks import (
+from cryptojwt.jwk.rsa import new_rsa_key
+
+from cieoidc.utils.helpers.jwks import (
     create_jwk,
-    public_jwk_from_private_jwk,
     private_pem_from_jwk,
+    public_jwk_from_private_jwk,
     public_pem_from_jwk,
 )
 
