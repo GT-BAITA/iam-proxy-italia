@@ -1,12 +1,16 @@
-from unittest.mock import MagicMock, patch
-
-import aiohttp
+from cieoidc.utils.helpers.misc import cacheable_get_http_url
+from cieoidc.utils.exceptions import HttpError
+from unittest.mock import patch, MagicMock
 import pytest
 import requests
-from cieoidc.utils.exceptions import HttpError
-from cieoidc.utils.helpers.http import fetch, fetch_all, http_get_async, http_get_sync
-from cieoidc.utils.helpers.misc import cacheable_get_http_url
+import aiohttp
 
+from cieoidc.utils.helpers.http import (
+    http_get_sync,
+    http_get_async,
+    fetch_all,
+    fetch,
+)
 
 def test_us01():
     resp = MagicMock()
@@ -15,7 +19,6 @@ def test_us01():
     with patch("requests.get", return_value=resp):
         res = http_get_sync(["http://example.com"])
         assert res == [resp]
-
 
 def test_us02():
     resp = MagicMock()
@@ -26,12 +29,10 @@ def test_us02():
         with pytest.raises(HttpError):
             http_get_sync(["http://example.com"])
 
-
 def test_us03():
     with patch("requests.get", side_effect=requests.exceptions.ConnectionError):
         with pytest.raises(HttpError):
             http_get_sync(["http://example.com"])
-
 
 @pytest.mark.asyncio
 async def test_us04():
@@ -42,19 +43,19 @@ async def test_us04():
     async def fake_fetch(*args, **kwargs):
         return resp
 
-    with patch("backends.cieoidc.utils.helpers.http.fetch", side_effect=fake_fetch):
+    with patch("cieoidc.utils.helpers.http.fetch", side_effect=fake_fetch):
         result = await fetch_all(MagicMock(), ["http://example.com"])
         assert result == [resp]
-
 
 @pytest.mark.asyncio
 async def test_us05():
     with patch(
-        "backends.cieoidc.utils.helpers.http.asyncio.gather",
-        side_effect=OSError("connection failed"),
+        "cieoidc.utils.helpers.http.asyncio.gather",
+        side_effect=OSError("connection failed")
     ):
-        with pytest.raises((HttpError, OSError)):
+        with pytest.raises((HttpError,OSError)):
             await fetch_all(MagicMock(), ["http://example.com"])
+
 
 
 def test_us06():
@@ -62,8 +63,8 @@ def test_us06():
     resp.status_code = 200
 
     with patch(
-        "backends.cieoidc.utils.helpers.misc._lru_cached_get_http_url",
-        return_value=resp,
+        "cieoidc.utils.helpers.misc._lru_cached_get_http_url",
+        return_value=resp
     ):
         r = cacheable_get_http_url(
             cache_ttl=10,
@@ -73,7 +74,6 @@ def test_us06():
         )
         assert r.status_code == 200
 
-
 def test_us07():
     with pytest.raises(ValueError):
         cacheable_get_http_url(
@@ -81,3 +81,4 @@ def test_us07():
             url="http://example.com",
             httpc_params={},
         )
+

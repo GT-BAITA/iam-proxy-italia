@@ -1,24 +1,19 @@
-from abc import ABC
-
 import pytest
-from cieoidc.models.oidc_auth import OidcAuthentication
+from abc import ABC
 from cieoidc.storage.interfaces.storage import OidcStorage
-
+from cieoidc.models.oidc_auth import OidcAuthentication
 
 def test_oidc_storage_is_abstract():
     with pytest.raises(TypeError):
         OidcStorage()
 
-
 class IncompleteStorage(OidcStorage):
     def connect(self):
         pass
 
-
 def test_incomplete_storage_cannot_be_instantiated():
     with pytest.raises(TypeError):
         IncompleteStorage()
-
 
 class DummyStorage(OidcStorage):
 
@@ -40,11 +35,9 @@ class DummyStorage(OidcStorage):
     def get_sessions(self, state: str) -> list[OidcAuthentication]:
         return []
 
-
 def test_dummy_storage_can_be_instantiated():
     storage = DummyStorage()
     assert isinstance(storage, OidcStorage)
-
 
 def test_dummy_storage_methods_contract():
     storage = DummyStorage()
@@ -60,9 +53,6 @@ def test_dummy_storage_methods_contract():
 
     result_update = storage.update_session(entity=None)
     assert isinstance(result_update, int)
-
-    result_get = storage.get_sessions("state123")
-    assert isinstance(result_get, list)
 
     result_get = storage.get_sessions("state123")
     assert isinstance(result_get, list)
