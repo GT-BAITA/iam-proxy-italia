@@ -43,6 +43,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.client_assertion_type = config.get("client_assertion_type")
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
+        self.configuration_plugins = self.generate_configuration_plugin(self.config)
         # Removido a incialização do mongo-db
 
 
@@ -82,7 +83,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         authorization["code"] = code
 
-       # authorization_token =  self.__create_token(authorization, code)
+        # authorization_token =  self.__create_token(authorization, code)
         if authorization["client_id"] != self.config["metadata"]["openid_relying_party"]["client_id"]:
             logger.debug("invalid request - Relying party not found")
             raise SATOSABadRequestError("Invalid relaying party")
