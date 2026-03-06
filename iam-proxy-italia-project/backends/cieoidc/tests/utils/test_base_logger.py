@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 from satosa.context import Context
 
-from cieoidc.utils.base_logger import BaseLogger
+from backends.cieoidc.utils.base_logger import BaseLogger
 
 @pytest.fixture
 def base_logger():
@@ -17,8 +17,8 @@ def context():
     ctx.state = "test-session"
     return ctx
 
-@patch("cieoidc.utils.base_logger.lu.get_session_id")
-@patch("cieoidc.utils.base_logger.logger")
+@patch("backends.cieoidc.utils.base_logger.lu.get_session_id")
+@patch("backends.cieoidc.utils.base_logger.logger")
 def test_log_with_string_context(mock_logger, mock_get_session_id, base_logger):
     mock_get_session_id.return_value = "session-id"
 
@@ -30,8 +30,8 @@ def test_log_with_string_context(mock_logger, mock_get_session_id, base_logger):
     assert "test-message" in args[0]
     assert "session-id" in args[0]
 
-@patch("cieoidc.utils.base_logger.lu.get_session_id")
-@patch("cieoidc.utils.base_logger.logger")
+@patch("backends.cieoidc.utils.base_logger.lu.get_session_id")
+@patch("backends.cieoidc.utils.base_logger.logger")
 def test_log_with_context_object(mock_logger, mock_get_session_id, base_logger, context):
     mock_get_session_id.return_value = "ctx-session-id"
 
@@ -54,13 +54,13 @@ def test_log_with_context_object(mock_logger, mock_get_session_id, base_logger, 
         ("_log_critical", "critical"),
     ],
 )
-@patch("cieoidc.utils.base_logger.BaseLogger._log")
+@patch("backends.cieoidc.utils.base_logger.BaseLogger._log")
 def test_log_level_helpers(mock_log, base_logger, method, level, context):
     getattr(base_logger, method)(context, "hello")
 
     mock_log.assert_called_once_with(context, level, "hello")
 
-@patch("cieoidc.utils.base_logger.BaseLogger._log_debug")
+@patch("backends.cieoidc.utils.base_logger.BaseLogger._log_debug")
 def test_log_function_debug_without_args(mock_log_debug, base_logger, context):
     base_logger._log_function_debug("test_fn", context)
 
@@ -70,7 +70,7 @@ def test_log_function_debug_without_args(mock_log_debug, base_logger, context):
     assert "test_fn" in args[1]
     assert "INCOMING REQUEST" in args[1]
 
-@patch("cieoidc.utils.base_logger.BaseLogger._log_debug")
+@patch("backends.cieoidc.utils.base_logger.BaseLogger._log_debug")
 def test_log_function_debug_with_args(mock_log_debug, base_logger, context):
     base_logger._log_function_debug(
         fn_name="test_fn",
@@ -90,5 +90,5 @@ def test_effective_log_level_returns_logger_level(base_logger):
 
     assert isinstance(level, int)
     assert level == logging.getLogger(
-        "cieoidc.utils.base_logger"
+        "backends.cieoidc.utils.base_logger"
     ).getEffectiveLevel()

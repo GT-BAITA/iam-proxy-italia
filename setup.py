@@ -34,7 +34,10 @@ setup(
     url="https://github.com/GT-BAITA/eudi-wallet-it-python",
     author="Giuseppe De Marco",
     author_email="demarcog83@gmail.com",
-    packages=find_packages(where="iam-proxy-italia-project/backends"),
+    packages=find_packages(
+        where="iam-proxy-italia-project/backends",
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
+    ),
     package_dir={"": "iam-proxy-italia-project/backends"},
     package_data={
         PKG_NAME: [

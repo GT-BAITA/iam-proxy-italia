@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cieoidc.endpoints.entity_configuration import EntityConfigHandler
+from backends.cieoidc.endpoints.entity_configuration import EntityConfigHandler
 from satosa.context import Context
 
 
@@ -39,8 +39,8 @@ def minimal_config():
 
 @pytest.fixture
 def handler(minimal_config):
-    with patch("cieoidc.utils.validators.validate_private_jwks") as mock_val_jwks, \
-            patch("cieoidc.utils.validators.validate_entity_metadata") as mock_val_meta:
+    with patch("backends.cieoidc.utils.validators.validate_private_jwks") as mock_val_jwks, \
+            patch("backends.cieoidc.utils.validators.validate_entity_metadata") as mock_val_meta:
         mock_val_jwks.return_value = None
         mock_val_meta.return_value = None
 
@@ -57,8 +57,8 @@ def handler(minimal_config):
 
 
 def test_initialization_calls_validation(minimal_config):
-    with patch("cieoidc.utils.validators.validate_private_jwks") as mock_val_jwks, \
-            patch("cieoidc.utils.validators.validate_entity_metadata") as mock_val_meta:
+    with patch("backends.cieoidc.utils.validators.validate_private_jwks") as mock_val_jwks, \
+            patch("backends.cieoidc.utils.validators.validate_entity_metadata") as mock_val_meta:
         mock_val_jwks.return_value = {"jwks_core":[
             {
                 "kty": "RSA",
@@ -96,7 +96,7 @@ def test_initialization_calls_validation(minimal_config):
 
 
 def test_metadata_property(handler):
-    with patch("cieoidc.utils.helpers.jwks.public_jwk_from_private_jwk") as mock_pub:
+    with patch("backends.cieoidc.utils.helpers.jwks.public_jwk_from_private_jwk") as mock_pub:
         mock_pub.side_effect = lambda x: {"kty": x["kty"], "kid": x["kid"]}
         meta = handler._metadata
         assert "openid_relying_party" in meta
@@ -104,7 +104,7 @@ def test_metadata_property(handler):
         assert meta["openid_relying_party"]["jwks"]["keys"][0]["kid"] == "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs"
 
 
-@patch("cieoidc.models.federation.FederationEntityConfiguration")
+@patch("backends.cieoidc.models.federation.FederationEntityConfiguration")
 def test_get_entity_configuration_dict(mock_fed_conf, handler):
     res = handler.get_entity_configuration(jws=False)
     assert json.loads(res)
@@ -112,8 +112,8 @@ def test_get_entity_configuration_dict(mock_fed_conf, handler):
     assert res_jws
 
 
-@patch("cieoidc.utils.helpers.jwtse.create_jws")
-@patch("cieoidc.utils.helpers.jwks.public_jwk_from_private_jwk")
+@patch("backends.cieoidc.utils.helpers.jwtse.create_jws")
+@patch("backends.cieoidc.utils.helpers.jwks.public_jwk_from_private_jwk")
 def test_get_openid_jwks(mock_pub, mock_create_jws, handler):
     mock_pub.s_
 
@@ -127,7 +127,7 @@ def test_endpoint_well_known_json(handler):
     assert response
 
 
-@patch("cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_entity_configuration")
+@patch("backends.cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_entity_configuration")
 def test_endpoint_well_known_jws(mock_get_entity, handler):
     mock_get_entity.return_value = "signed-jws"
 
@@ -138,7 +138,7 @@ def test_endpoint_well_known_jws(mock_get_entity, handler):
     response = handler.endpoint(context)
     assert response
 
-@patch("cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_openid_jwks")
+@patch("backends.cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_openid_jwks")
 def test_endpoint_openid_jwks_jose(mock_get_jwks, handler):
     mock_get_jwks.return_value = "jwks-jws"
     context = Context()
@@ -149,7 +149,7 @@ def test_endpoint_openid_jwks_jose(mock_get_jwks, handler):
     assert response
 
 
-@patch("cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_openid_jwks")
+@patch("backends.cieoidc.endpoints.entity_configuration.EntityConfigHandler.get_openid_jwks")
 def test_endpoint_openid_jwks_json(mock_get_jwks, handler):
     mock_get_jwks.return_value = json.dumps({"keys": []})
     context = Context()
@@ -159,7 +159,7 @@ def test_endpoint_openid_jwks_json(mock_get_jwks, handler):
     response = handler.endpoint(context)
     assert response
 
-@patch("cieoidc.endpoints.entity_configuration.public_jwk_from_private_jwk")
+@patch("backends.cieoidc.endpoints.entity_configuration.public_jwk_from_private_jwk")
 def test_get_openid_jwks_json(mock_pub, handler):
     mock_pub.side_effect = lambda k: {"kid": k["kid"], "kty": k["kty"]}
     result = handler.get_openid_jwks(jws=False)
@@ -169,8 +169,8 @@ def test_get_openid_jwks_json(mock_pub, handler):
     assert data["keys"][0]["kid"] == "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs"
     assert mock_pub.call_count == 1
 
-@patch("cieoidc.endpoints.entity_configuration.create_jws")
-@patch("cieoidc.endpoints.entity_configuration.public_jwk_from_private_jwk")
+@patch("backends.cieoidc.endpoints.entity_configuration.create_jws")
+@patch("backends.cieoidc.endpoints.entity_configuration.public_jwk_from_private_jwk")
 def test_get_openid_jwks_jws(mock_pub, mock_create_jws, handler):
     mock_pub.side_effect = lambda k: {"kid": k["kid"]}
     mock_create_jws.return_value = "signed-jws"
