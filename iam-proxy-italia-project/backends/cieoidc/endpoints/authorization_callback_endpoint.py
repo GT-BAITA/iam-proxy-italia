@@ -4,18 +4,6 @@ import logging
 import time
 from typing import Callable
 
-from cieoidc.models.oidc_auth import OidcAuthentication
-from cieoidc.models.user import OidcUser
-from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
-from cieoidc.utils.clients.oidc import OidcUserInfo
-from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
-from cieoidc.utils.helpers.jwtse import unpad_jwt_payload, verify_at_hash, verify_jws
-from cieoidc.utils.helpers.misc import (
-    get_jwk_from_jwt,
-    get_jwks,
-    process_user_attributes,
-)
 from pydantic import ValidationError
 from pyeudiw.trust.dynamic import (
     CombinedTrustEvaluator,  # todo remove pyeudiw dependency
@@ -25,6 +13,15 @@ from satosa.context import Context
 from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
 from satosa.internal import AuthenticationInformation, InternalData
 from satosa.response import Response
+
+from cieoidc.models.oidc_auth import OidcAuthentication
+from cieoidc.models.user import OidcUser
+from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
+from cieoidc.utils.clients.oidc import OidcUserInfo
+from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
+from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
+from cieoidc.utils.helpers.jwtse import unpad_jwt_payload, verify_at_hash, verify_jws
+from cieoidc.utils.helpers.misc import get_jwk_from_jwt, get_jwks, process_user_attributes
 
 logger = logging.getLogger(__name__)
 
