@@ -1,14 +1,17 @@
-import logging
 import uuid
-from typing import Any, List, Optional, TypeVar
+
+import logging
+
+from pymongo import MongoClient
+from pymongo.errors import InvalidOperation, PyMongoError
 
 from bson import ObjectId
 from bson.binary import Binary
+from pydantic import BaseModel
+from typing import Optional, Any, List, TypeVar
+
 from cieoidc.models.oidc_auth import OidcAuthentication
 from cieoidc.storage.interfaces.storage import OidcStorage
-from pydantic import BaseModel
-from pymongo import MongoClient
-from pymongo.errors import InvalidOperation, PyMongoError
 
 E = TypeVar("E", bound=BaseModel)
 
@@ -34,9 +37,7 @@ class MongoStorage(OidcStorage):
 
     def connect(self) -> None:
         if self.__client is None:
-            self.__client = MongoClient(
-                self._url, username=self._username, password=self._password
-            )
+            self.__client = MongoClient(self._url, username=self._username, password=self._password)
 
     def close(self) -> None:
         if self.__client is not None:
@@ -55,7 +56,7 @@ class MongoStorage(OidcStorage):
     def _to_doc(self, entity: E, include_unset=True) -> dict[str, Any]:
         d = entity.model_dump(mode="json", exclude_unset=not include_unset)
         if "id" in d:
-            if _uuid := self._to_uuid(d["id"]):  # convert to uuid if it is
+            if _uuid := self._to_uuid(d["id"]): #convert to uuid if it is
                 d["_id"] = Binary.from_uuid(_uuid)
             d.pop("id", None)
         return d
@@ -85,7 +86,8 @@ class MongoStorage(OidcStorage):
 
         try:
             result = self._db[collection].update_one(
-                {"_id": to_update["_id"]}, {"$set": to_update}
+                {"_id": to_update["_id"]},
+                {"$set": to_update}
             )
         except PyMongoError as e:
             logger.debug(e)
@@ -108,24 +110,18 @@ class MongoStorage(OidcStorage):
             logger.debug(e)
             return None
 
-    def _find_by_id(
-        self, collection: str, entity_id: str, entity_cls: type[BaseModel]
-    ) -> Optional[E]:
-        if entity_id is not str:
-            return None
+    def _find_by_id(self, collection: str, entity_id: str, entity_cls: type[BaseModel]) -> Optional[E]:
+        if entity_id is not str: return None
 
         if not (_uuid := self._to_uuid(entity_id)):
             oid = ObjectId(entity_id)
         else:
             oid = Binary.from_uuid(_uuid)
         doc = self._db[collection].find_one({"_id": oid})
-        if doc is None:
-            return None
+        if doc is None: return None
         return self._from_doc(doc, entity_cls)
 
-    def _find_all(
-        self, collection: str, filters: dict[str, Any], entity_cls: type[BaseModel]
-    ) -> List[E]:
+    def _find_all(self, collection: str, filters: dict[str, Any], entity_cls: type[BaseModel]) -> List[E]:
         cursor = self._db[collection].find(filters)
         return [self._from_doc(doc, entity_cls) for doc in cursor]
 
@@ -139,10 +135,9 @@ class MongoStorage(OidcStorage):
             return 1
         return 0
 
+
     def get_sessions(self, state: str) -> list[OidcAuthentication]:
-        return self._find_all(
-            self._auth_collection, {"state": state}, OidcAuthentication
-        )
+        return self._find_all(self._auth_collection, {"state": state}, OidcAuthentication)
 
     def _to_uuid(self, _id: str) -> Optional[uuid.UUID]:
         try:

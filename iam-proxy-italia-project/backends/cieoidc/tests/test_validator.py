@@ -1,21 +1,20 @@
 import json
-from unittest.mock import MagicMock, patch
-
 import pytest
+from unittest.mock import patch, MagicMock
 
 from cieoidc.utils.validators import (
-    ENCRYPTION_ALG_VALUES_SUPPORTED,
-    ENCRYPTION_ENC_SUPPORTED,
-    SIGNING_ALG_VALUES_SUPPORTED,
-    ValidationError,
+    validate_public_jwks,
+    validate_private_jwks,
     validate_metadata_algs,
     validate_metadata_algs_v1,
-    validate_private_jwks,
-    validate_public_jwks,
+    ValidationError,
+    SIGNING_ALG_VALUES_SUPPORTED,
+    ENCRYPTION_ALG_VALUES_SUPPORTED,
+    ENCRYPTION_ENC_SUPPORTED,
 )
 
 
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_public_jwks_success(mock_key_from_jwk):
     key = MagicMock()
     key.private_key.return_value = False
@@ -24,8 +23,8 @@ def test_validate_public_jwks_success(mock_key_from_jwk):
     validate_public_jwks(jwks)
 
 
-@patch("backends.cieoidc.utils.validators.serialize_rsa_key")
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.serialize_rsa_key")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_public_jwks_private_key_rejected(
     mock_key_from_jwk, mock_serialize
 ):
@@ -39,14 +38,13 @@ def test_validate_public_jwks_private_key_rejected(
         validate_public_jwks(jwks)
 
 
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_public_jwks_invalid_jwk(mock_key_from_jwk):
     mock_key_from_jwk.side_effect = Exception("invalid jwk")
     with pytest.raises(ValidationError):
         validate_public_jwks({"invalid": True})
 
-
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_private_jwks_success(mock_key_from_jwk):
     key = MagicMock()
     key.private_key.return_value = True
@@ -54,7 +52,7 @@ def test_validate_private_jwks_success(mock_key_from_jwk):
     validate_private_jwks({"kty": "RSA"})
 
 
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_private_jwks_public_key_rejected(mock_key_from_jwk):
     key = MagicMock()
     key.private_key.return_value = False
@@ -63,7 +61,7 @@ def test_validate_private_jwks_public_key_rejected(mock_key_from_jwk):
         validate_private_jwks({"kty": "RSA"})
 
 
-@patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
+@patch("cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_private_jwks_invalid_jwk(mock_key_from_jwk):
     mock_key_from_jwk.side_effect = Exception("boom")
     with pytest.raises(ValidationError):

@@ -1,9 +1,12 @@
 import json
-from datetime import datetime, timezone
+import pytest
 from unittest.mock import MagicMock, patch
 
-import pytest
+from datetime import datetime, timezone
+
 from cieoidc.endpoints.authorization_endpoint import AuthorizationHandler
+
+
 
 @pytest.fixture
 def minimal_config():
@@ -18,7 +21,7 @@ def minimal_config():
                 "q": "z2QeMH4WtrdiWUET7JgZNX0TbcaVBgd2Gpo8JHnfnGOUsvO_euKGgqpCcxiWVXSlqffQyTgVzl4iMROP8bEaQwvueHurtziMDSy9Suumyktu3PbGgjqu_izRim8Xlg7sz8Hs2quJPII_fQ8BCoaWpg30osFZqCBarQM7CWhxR40",  # noqa: E501
                 "d": "n_ePK5DdOxqArf75tDGaViYrXDqRVk8zyl2dfKiiR0dXQJK7tbzJtHoGQeH4E-sw3_-Bc7OKY7DcbBWgHTijMRWj9LkAu9uCvqqGMaAroWH0aBcUmZAsNjcyUIyJ3_JRcNfUDiX3nVg67qe4ZWnMDogowaVZv3aXJiCvKE8aJK4BV_nF3Nt5R6zUYpjZQ8T1GDZCV3vza3qglDrXe8zoc-p8cLs3rJn7tMVSJVznCIqOfeM1VIg0I3n2bubYOx88sckHuDnfXTiTDlyq5IwDyBHmiIe3fpu-c4e1tiBmbOf2IqDCaX8SdpnU2gTj9YlZtRNqmh3NB_rksBKWLz3uIQ",  # noqa: E501
                 "e": "AQAB",
-                "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs",
+                "kid": "YhuIJU6o15EUCyqA0LHEqJd-xVPJgoyW5wZ1o4padWs"
             }
         ],
         "prompt": "login",
@@ -29,7 +32,10 @@ def minimal_config():
                 "scope": "openid",
                 "claim": {"userinfo": {"email": None}},
                 "response_types": ["code"],
-                "code_challenge": {"length": 32, "method": "S256"},
+                "code_challenge": {
+                    "length": 32,
+                    "method": "S256"
+                }
             }
         },
         "endpoints": {
@@ -38,12 +44,12 @@ def minimal_config():
                     "metadata": {
                         "openid_relying_party": {
                             "client_id": "client123",
-                            "redirect_uris": ["https://localhost/callback"],
+                            "redirect_uris": ["https://localhost/callback"]
                         }
                     }
                 }
             }
-        },
+        }
     }
 
 
@@ -70,7 +76,7 @@ def trust_chain():
 
 @pytest.fixture
 def handler(minimal_config, trust_chain):
-    with patch("backends.cieoidc.storage.db_engine.OidcDbEngine") as db_mock:
+    with patch("cieoidc.storage.db_engine.OidcDbEngine") as db_mock:
         db = db_mock.return_value
         db.connect.return_value = None
         db.add_session.return_value = 1
@@ -82,9 +88,10 @@ def handler(minimal_config, trust_chain):
             name="authz",
             auth_callback_func=MagicMock(),
             converter=MagicMock(),
-            trust_chains={"http://trust-anchor.example.org:5002": trust_chain},
+            trust_chains={"http://trust-anchor.example.org:5002": trust_chain}
         )
         return h
+
 
 
 def test_us01(handler):
@@ -94,7 +101,7 @@ def test_us01(handler):
 def test_us02(minimal_config):
     del minimal_config["endpoints"]
 
-    with patch("backends.cieoidc.storage.db_engine.OidcDbEngine"):
+    with patch("cieoidc.storage.db_engine.OidcDbEngine"):
         handler = AuthorizationHandler(
             config=minimal_config,
             internal_attributes={},
@@ -102,23 +109,28 @@ def test_us02(minimal_config):
             name="x",
             auth_callback_func=MagicMock(),
             converter=MagicMock(),
-            trust_chains={},
+            trust_chains={}
         )
 
     with pytest.raises(ValueError):
         handler._validate_configs()
 
 
-@patch("backends.cieoidc.utils.helpers.misc.get_pkce")
-@patch("backends.cieoidc.utils.helpers.jwtse.create_jws")
-@patch("backends.cieoidc.utils.helpers.misc.get_key")
+@patch("cieoidc.utils.helpers.misc.get_pkce")
+@patch("cieoidc.utils.helpers.jwtse.create_jws")
+@patch("cieoidc.utils.helpers.misc.get_key")
 @patch("satosa.response.Redirect")
 def test_us03(
-    redirect_mock, get_key_mock, create_jws_mock, get_pkce_mock, handler, context
+    redirect_mock,
+    get_key_mock,
+    create_jws_mock,
+    get_pkce_mock,
+    handler,
+    context
 ):
     get_pkce_mock.return_value = {
         "code_challenge": "abc",
-        "code_challenge_method": "S256",
+        "code_challenge_method": "S256"
     }
     get_key_mock.return_value = {"kty": "RSA"}
     create_jws_mock.return_value = "signed.jwt"
@@ -126,10 +138,9 @@ def test_us03(
     assert response is not None
 
 
+
 def test_us04(handler):
-    handler.config["metadata"]["openid_relying_party"]["code_challenge"][
-        "length"
-    ] = None
+    handler.config["metadata"]["openid_relying_party"]["code_challenge"]["length"] = None
 
     with pytest.raises(ValueError):
         handler._AuthorizationHandler__pkce_generation({})
@@ -142,24 +153,21 @@ def test_us05():
         "response_type": "code",
         "code_challenge": "abc",
         "code_challenge_method": "S256",
-        "request": "jwt",
+        "request": "jwt"
     }
 
     with patch(
-        "backends.cieoidc.utils.helpers.misc.http_dict_to_redirect_uri_path"
+        "cieoidc.utils.helpers.misc.http_dict_to_redirect_uri_path"
     ) as uri_mock:
         uri_mock.return_value = (
             "client_id=client123&scope=openid&response_type=code&"
             "code_challenge=abc&code_challenge_method=S256&request=jwt"
         )
         uri = AuthorizationHandler.generate_uri(authz_data)
-        assert (
-            uri
-            == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
-        )
+        assert uri == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
 
 
-@patch("backends.cieoidc.models.oidc_auth.OidcAuthentication")
+@patch("cieoidc.models.oidc_auth.OidcAuthentication")
 def test_us06(mock_auth, handler):
     handler._db_engine.add_session = MagicMock(return_value=1)
 
@@ -169,7 +177,7 @@ def test_us06(mock_auth, handler):
         "endpoint": "x",
         "provider_id": "y",
         "data": "{}",
-        "provider_configuration": {},
+        "provider_configuration": {}
     }
     handler._AuthorizationHandler__insert(auth_obj)
 
