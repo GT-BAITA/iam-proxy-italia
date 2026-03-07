@@ -12,10 +12,10 @@ from pydantic import ValidationError
 from ..utils.helpers.configuration_utils import ConfigurationPlugin
 from ..utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from ..utils.clients.oidc import OidcUserInfo
-from ..storage.db_engine import OidcDbEngine
+# from ..storage.db_engine import OidcDbEngine # removido
 from ..models.oidc_auth import OidcAuthentication
 from ..models.user import OidcUser
-from ..utils.exceptions import StorageUnreachable
+# from ..utils.exceptions import StorageUnreachable # removido
 from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
@@ -43,11 +43,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.client_assertion_type = config.get("client_assertion_type")
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
-        self._db_engine = OidcDbEngine(config.get("db_config", {}))
-        self._db_engine.connect()
-        if not self._db_engine.is_connected():
-            raise StorageUnreachable
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
+        # Removido a incialização do mongo-db
 
 
     def endpoint(self, context, *args):
@@ -68,7 +65,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             raise SATOSAAuthenticationError(context.state, context.qs_params.get('error_description'))
 
         state: str = context.qs_params.get("state")
-        authorization = self.__get_authorization(state)
+        authorization = self.__get_authorization(state, context)
 
         if not authorization:
             logger.debug("Authorization empty")
@@ -139,7 +136,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         # decoded_access_token = unpad_jwt_payload(access_token)
         # logger.debug(f"unpad_jwt_payload: {decoded_access_token}")
-        self.__update_authentication_token(authorization, access_token, id_token, token_response)
+        self.__update_authentication_token(
+            authorization, access_token, id_token, token_response, context
+        )
 
         # retrieve user data
         oidc_user = OidcUserInfo(authorization["provider_configuration"].get("openid_provider"), self.jws_core,
@@ -179,13 +178,12 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         authorization["user"] = user
 
-        self.__update_authorization(authorization)
+        self.__update_authorization(authorization, context)
 
         internal_data = self._translate_response(user.model_dump(mode="json"), iss, authorization.get("client_id"))
         return self._auth_callback(context, internal_data)
 
-    def __get_authorization(self, state: str) -> dict:
-
+    def __get_authorization(self, state: str, context) -> dict:
         """
         method __get_authorization:
         This method get the state from DB.
@@ -199,10 +197,13 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         """
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [state {state}]")
+        # não usa mais mongo DB
+        # busca as informações no context
         try:
-            output = self._db_engine.get_sessions(state)
+            output = context.state["satosa_authz_state"]
+            output = OidcAuthentication(**output)
             if output:
-                return output[0].model_dump(mode="json")
+                return output.model_dump(mode="json")
         except ValidationError as e:
             logger.debug(e)
         return {}
@@ -221,7 +222,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             return None
 
     def __update_authentication_token(self, authorization: dict, access_token: dict, id_token: dict,
-                                      token_response: dict):
+                                      token_response: dict, context):
         """
         method __update_authentication_token:
         This method update the authentication token. Add this properties:
@@ -235,15 +236,16 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
             f"Params [authorization {authorization}, access_token: {access_token}, id_token:{id_token}, token_response:{token_response}]"
         )
+        # não atualiza mais no mongo DB
+        # atualizamos as informações no context
         authorization["access_token"] = access_token
         authorization["id_token"] = id_token
         authorization["scope"] = token_response.get("scope")
         authorization["token_type"] = token_response["token_type"]
         authorization["expires_in"] = token_response["expires_in"]
-        self.__update_authorization(authorization)
+        self.__update_authorization(authorization, context)
 
-    def __update_authorization(self, authorization_input: dict):
-
+    def __update_authorization(self, authorization_input: dict, context):
         """
         method __update_authorization:
         This method update the authorization dict.
@@ -258,17 +260,15 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [authorization_input {authorization_input}]"
         )
-
+        # atualiza no context
         try:
             auth_token = OidcAuthentication(**authorization_input)
-            if not self._db_engine.update_session(auth_token):
-                logger.error("Unable to insert the AuthenticationToken object")
+            context.state["satosa_authz_state"] = auth_token.model_dump(mode="json")
+            logger.error("Unable to insert the AuthenticationToken object")
         except ValidationError as e:
             logger.debug(e)
 
-        logger.debug(
-            f"Registration success for input: {authorization_input}"
-        )
+        logger.debug(f"Registration success for input: {authorization_input}")
 
     def __check_provider(self, provider_is: str, iss: str) -> bool:
 
@@ -296,7 +296,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             iss = iss[:-1]
 
         return provider_is == iss
-
+    
     def _translate_response(self, attributes: dict, issuer: str, sub: str) -> InternalData:
         """Translates oidc response to SATOSA internal response.
 
@@ -309,6 +309,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         internal_resp.attributes = self._converter.to_internal("cie_oidc", attributes)
         internal_resp.subject_id = sub
         return internal_resp
+
 
 
 
