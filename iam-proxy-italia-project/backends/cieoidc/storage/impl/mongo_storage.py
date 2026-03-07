@@ -10,8 +10,8 @@ from bson.binary import Binary
 from pydantic import BaseModel
 from typing import Optional, Any, List, TypeVar
 
-from cieoidc.models.oidc_auth import OidcAuthentication
-from cieoidc.storage.interfaces.storage import OidcStorage
+from backends.cieoidc.models.oidc_auth import OidcAuthentication
+from backends.cieoidc.storage.interfaces.storage import OidcStorage
 
 E = TypeVar("E", bound=BaseModel)
 

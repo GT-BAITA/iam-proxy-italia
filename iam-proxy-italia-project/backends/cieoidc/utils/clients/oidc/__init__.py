@@ -1,14 +1,14 @@
 import logging
 import requests
 
-from cieoidc.utils.exceptions import UnknownKid
-from cieoidc.utils.helpers.jwtse import  (
+from backends.cieoidc.utils.exceptions import UnknownKid
+from backends.cieoidc.utils.helpers.jwtse import  (
     unpad_jwt_head,
     decrypt_jwe,
     verify_jws
 )
-from cieoidc.utils.helpers.misc import get_jwks
-from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
+from backends.cieoidc.utils.helpers.misc import get_jwks
+from ...helpers.configuration_utils import ConfigurationPlugin
 
 logger = logging.getLogger(__name__)
 

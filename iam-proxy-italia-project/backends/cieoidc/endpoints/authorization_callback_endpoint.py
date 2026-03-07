@@ -9,16 +9,16 @@ from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
 from satosa.internal import InternalData, AuthenticationInformation
 from satosa.response import Response
 from pydantic import ValidationError
-from cieoidc.utils.helpers.configuration_utils import ConfigurationPlugin
-from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
-from cieoidc.utils.clients.oidc import OidcUserInfo
-# from cieoidc.storage.db_engine import OidcDbEngine # removido
-from cieoidc.models.oidc_auth import OidcAuthentication
-from cieoidc.models.user import OidcUser
-# from cieoidc.utils.exceptions import StorageUnreachable # removido
-from cieoidc.utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
-from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
+from ..utils.helpers.configuration_utils import ConfigurationPlugin
+from ..utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
+from ..utils.clients.oidc import OidcUserInfo
+# from ..storage.db_engine import OidcDbEngine # removido
+from ..models.oidc_auth import OidcAuthentication
+from ..models.user import OidcUser
+# from ..utils.exceptions import StorageUnreachable # removido
+from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
+from ..utils.handlers.base_endpoint import BaseEndpoint
+from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
 from pyeudiw.trust.dynamic import CombinedTrustEvaluator #todo remove pyeudiw dependency
 
 logger = logging.getLogger(__name__)

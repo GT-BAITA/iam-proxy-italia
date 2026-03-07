@@ -4,12 +4,12 @@ import inspect
 import uuid
 import requests
 
-from cieoidc.utils import KeyUsage
-from cieoidc.utils.helpers.misc import (
+from backends.cieoidc.utils import KeyUsage
+from backends.cieoidc.utils.helpers.misc import (
     get_key,
     iat_now, exp_from_now
 )
-from cieoidc.utils.helpers.jwtse import (
+from backends.cieoidc.utils.helpers.jwtse import (
     unpad_jwt_payload,
     verify_at_hash, create_jws
 )

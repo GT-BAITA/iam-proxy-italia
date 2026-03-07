@@ -9,11 +9,11 @@ from satosa.context import Context
 from satosa.internal import InternalData
 from satosa.response import Response, Redirect
 
-from cieoidc.models.federation import FederationEntityConfiguration
-from cieoidc.utils.validators import validate_private_jwks, validate_entity_metadata
-from cieoidc.utils.helpers.jwks import public_jwk_from_private_jwk
-from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.jwtse import create_jws
+from ..models.federation import FederationEntityConfiguration
+from ..utils.validators import validate_private_jwks, validate_entity_metadata
+from ..utils.helpers.jwks import public_jwk_from_private_jwk
+from ..utils.handlers.base_endpoint import BaseEndpoint
+from ..utils.helpers.jwtse import create_jws
 
 logger = logging.getLogger(__name__)
 

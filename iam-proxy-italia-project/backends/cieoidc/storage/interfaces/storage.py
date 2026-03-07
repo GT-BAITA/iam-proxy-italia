@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from cieoidc.models.oidc_auth import OidcAuthentication
+from backends.cieoidc.models.oidc_auth import OidcAuthentication
 
 
 class OidcStorage(ABC):

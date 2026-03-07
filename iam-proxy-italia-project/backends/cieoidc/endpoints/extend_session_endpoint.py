@@ -8,9 +8,9 @@ from satosa.context import Context
 from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
-from cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
-from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.jwtse import (
+from backends.cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
+from ..utils.handlers.base_endpoint import BaseEndpoint
+from ..utils.helpers.jwtse import (
     unpad_jwt_payload
 )
 

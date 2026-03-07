@@ -4,9 +4,9 @@ import logging
 from typing import Union
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 
-from cieoidc.utils.helpers.misc import exp_from_now, iat_now
-from cieoidc.utils.helpers.jwks import serialize_rsa_key, private_pem_from_jwk, public_pem_from_jwk
-from cieoidc.utils.helpers.jwtse import create_jws
+from ..utils.helpers.misc import exp_from_now, iat_now
+from ..utils.helpers.jwks import serialize_rsa_key, private_pem_from_jwk, public_pem_from_jwk
+from ..utils.helpers.jwtse import create_jws
 
 logger = logging.getLogger(__name__)
 
