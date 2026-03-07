@@ -9,9 +9,9 @@ from glob import glob
 
 from setuptools import find_packages, setup
 
-PKG_NAME = "cieoidc"
+PKG_NAME = "backends"
 
-init_path = "./iam-proxy-italia-project/backends/cieoidc/__init__.py"
+init_path = "./iam-proxy-italia-project/backends/__init__.py"
 with open(file=init_path, encoding="utf-8") as fd:
     VERSION = re.search(
         r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', fd.read(), re.MULTILINE
@@ -35,16 +35,13 @@ setup(
     author="Giuseppe De Marco",
     author_email="demarcog83@gmail.com",
     packages=find_packages(
-        where="iam-proxy-italia-project/backends",
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
+        where="iam-proxy-italia-project",
     ),
-    package_dir={"": "iam-proxy-italia-project/backends"},
+    package_dir={"": "iam-proxy-italia-project"},
     package_data={
         PKG_NAME: [
             i.replace(f"{PKG_NAME}/", "")
-            for i in glob(
-                f"iam-proxy-italia-project/backends/{PKG_NAME}/**", recursive=True
-            )
+            for i in glob(f"iam-proxy-italia-project/{PKG_NAME}/**", recursive=True)
         ]
     },
     install_requires=[

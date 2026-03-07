@@ -12,13 +12,13 @@ from satosa.context import Context
 from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.response import Redirect
-from cieoidc.models.oidc_auth import OidcAuthentication
-from cieoidc.storage.db_engine import OidcDbEngine
-from cieoidc.utils import KeyUsage
-from cieoidc.utils.handlers.base_endpoint import BaseEndpoint
-from cieoidc.utils.helpers.jwtse import create_jws
-from cieoidc.utils.helpers.jwks import  public_jwk_from_private_jwk
-from cieoidc.utils.helpers.misc import (
+from ..models.oidc_auth import OidcAuthentication
+# from ..storage.db_engine import OidcDbEngine # removido
+from ..utils import KeyUsage
+from ..utils.handlers.base_endpoint import BaseEndpoint
+from ..utils.helpers.jwtse import create_jws
+from ..utils.helpers.jwks import  public_jwk_from_private_jwk
+from ..utils.helpers.misc import (
     random_string,
     get_pkce,
     get_key,
