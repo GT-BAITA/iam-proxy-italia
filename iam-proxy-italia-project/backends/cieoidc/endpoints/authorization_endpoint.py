@@ -49,7 +49,6 @@ class AuthorizationHandler(BaseEndpoint):
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = trust_chains
-        # Removido a incialização do mongo-db
 
     @property
     def _jwks(self) -> dict:
@@ -177,7 +176,7 @@ class AuthorizationHandler(BaseEndpoint):
         )
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
-        # local do campo scope alterado para ser válido, fora da EC
+        # local do campo scope alterado para ser válido, fora da entity configuration
         scope = self.config["scope"]
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
