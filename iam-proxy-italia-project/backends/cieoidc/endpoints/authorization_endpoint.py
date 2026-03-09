@@ -160,6 +160,7 @@ class AuthorizationHandler(BaseEndpoint):
         )
         return self.trust_chains[provider]
 
+
     def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
         """
         method private authorization_data:
