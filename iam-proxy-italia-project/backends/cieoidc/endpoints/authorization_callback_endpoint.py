@@ -44,7 +44,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
-        # Removido a incialização do mongo-db
 
 
     def endpoint(self, context, *args):
@@ -273,7 +272,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.error("Unable to insert the AuthenticationToken object")
             logger.debug(e)
 
-        logger.debug(f"Registration success for input: {authorization_input}")
+        logger.debug(
+            f"Registration success for input: {authorization_input}"
+        )
 
     def __check_provider(self, provider_is: str, iss: str) -> bool:
 
@@ -302,7 +303,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             iss = iss[:-1]
 
         return provider_is == iss
-    
+
     def _translate_response(self, attributes: dict, issuer: str, sub: str) -> InternalData:
         """Translates oidc response to SATOSA internal response.
 
@@ -315,7 +316,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         internal_resp.attributes = self._converter.to_internal("cie_oidc", attributes)
         internal_resp.subject_id = sub
         return internal_resp
-
 
 
 
