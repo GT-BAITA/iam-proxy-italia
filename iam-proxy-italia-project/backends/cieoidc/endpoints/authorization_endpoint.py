@@ -13,7 +13,6 @@ from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.response import Redirect
 from ..models.oidc_auth import OidcAuthentication
-# from ..storage.db_engine import OidcDbEngine # removido
 from ..utils import KeyUsage
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import create_jws
