@@ -12,10 +12,8 @@ from pydantic import ValidationError
 from ..utils.helpers.configuration_utils import ConfigurationPlugin
 from ..utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from ..utils.clients.oidc import OidcUserInfo
-# from ..storage.db_engine import OidcDbEngine # removido
 from ..models.oidc_auth import OidcAuthentication
 from ..models.user import OidcUser
-# from ..utils.exceptions import StorageUnreachable # removido
 from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
