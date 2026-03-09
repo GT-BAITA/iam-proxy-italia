@@ -260,12 +260,13 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [authorization_input {authorization_input}]"
         )
-        # atualiza no context
+        # Atualiza no context adicionando as novas informações
+        # para os endpoints serem capazes de trabalhar sem o mongoDB
         try:
             auth_token = OidcAuthentication(**authorization_input)
             context.state["satosa_authz_state"] = auth_token.model_dump(mode="json")
-            logger.error("Unable to insert the AuthenticationToken object")
         except ValidationError as e:
+            logger.error("Unable to insert the AuthenticationToken object")
             logger.debug(e)
 
         logger.debug(f"Registration success for input: {authorization_input}")
