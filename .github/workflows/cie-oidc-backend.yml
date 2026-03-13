@@ -6,8 +6,18 @@ name: CIE OIDC backend
 on:
   push:
     branches: [ master, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'iam-proxy-italia-project/static/**'
+      - 'Docker-compose/nginx/html/static/**'
   pull_request:
     branches: [ master, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'iam-proxy-italia-project/static/**'
+      - 'Docker-compose/nginx/html/static/**'
 
 jobs:
   pre_job:
@@ -66,7 +76,9 @@ jobs:
       - name: Upload coverage report (HTML)
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-py${{ matrix.python-version }}
+          name: coverage-report-py$      # - name: Copy Satosa IDP Metadata to djangosaml2 SP
+      #   run: |
+      #     wget -vd --no-check-certificate https://iam-proxy-italia.example.org/Saml2IDP/metadata -O Docker-compose/djangosaml2_sp/saml2_sp/saml2_config/iam-proxy-italia.xml{{ matrix.python-version }}
           path: htmlcov/
 
       - name: Coverage summary

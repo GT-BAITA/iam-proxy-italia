@@ -28,6 +28,8 @@ Docker-compose/djangosaml2_sp/*
 Docker-compose/mongo/db/*
 Docker-compose/nginx/html/static/*
 Docker-compose/certbot/live/localhost
+Docker-compose/certbot/live/iam-proxy-italia.example.org
+Docker-compose/certbot/live/*
 Docker-compose/.env
 Docker-compose/eudi-wallet-it-python
 Docker-compose/wwwallet
@@ -47,7 +49,7 @@ Docker-compose/spid_cie_oidc_django
 *.log
 *.sqlite3
 
-# Local test virtual environment (README-TEST)
+# Local test virtual environment (see docs/testing.md)
 test_venv/
 test_env/
 
@@ -55,3 +57,9 @@ test_env/
 htmlcov/
 .coverage
 coverage.xml
+.venv-audit
+.venv-lock
+
+# Static assets (Bootstrap Italia via npm)
+iam-proxy-italia-project/static/node_modules/
+.venv*

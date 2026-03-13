@@ -90,7 +90,6 @@ def handler(minimal_config, trust_chain):
     )
     return h
 
-
 def test_us01(handler):
     handler._validate_configs()
 
@@ -150,7 +149,6 @@ def test_us03(
         response = handler.endpoint(context)
         assert response is not None
 
-
 def test_us04(handler):
     handler.config["metadata"]["openid_relying_party"]["code_challenge"]["length"] = None
     with pytest.raises(ValueError):
@@ -169,9 +167,15 @@ def test_us05():
     with patch(
         "backends.cieoidc.utils.helpers.misc.http_dict_to_redirect_uri_path"
     ) as uri_mock:
-        uri_mock.return_value = "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
+        uri_mock.return_value = (
+            "client_id=client123&scope=openid&response_type=code&"
+            "code_challenge=abc&code_challenge_method=S256&request=jwt"
+        )
         uri = AuthorizationHandler.generate_uri(authz_data)
-        assert uri == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
+        assert uri == (
+            "client_id=client123&scope=openid&response_type=code&"
+            "code_challenge=abc&code_challenge_method=S256&request=jwt"
+        )
 
 
 @patch("backends.cieoidc.models.oidc_auth.OidcAuthentication")

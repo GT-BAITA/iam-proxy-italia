@@ -5,8 +5,18 @@ name: Lint
 on:
   push:
     branches: [ master, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'iam-proxy-italia-project/static/**'
+      - 'Docker-compose/nginx/html/static/**'
   pull_request:
     branches: [ master, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'iam-proxy-italia-project/static/**'
+      - 'Docker-compose/nginx/html/static/**'
 
 jobs:
   pre_job:
