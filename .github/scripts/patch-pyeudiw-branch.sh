@@ -13,7 +13,7 @@ PYEUDIW_REPO_NAME="eudi-wallet-it-python"
 PYEUDIW_REPO_URL="https://github.com/italia/${PYEUDIW_REPO_NAME}"
 PYEUDIW_REPO_GIT="${PYEUDIW_REPO_URL}.git"
 
-SETUP_PY_PATH="iam-proxy-italia-project/setup.py"
+SETUP_PY_PATH="setup.py"
 
 echo "Current branch: '$CURRENT_BRANCH'"
 echo "Target branch: '$TARGET_BRANCH'"
