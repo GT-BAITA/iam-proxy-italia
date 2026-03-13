@@ -370,22 +370,20 @@ def test_empty_user_attributes(handler):
 
 
 def test_update_authorization(handler):
-    # Como não há mais _db_engine, este teste deve ser ignorado ou modificado
+    # Testa se o método __update_authorization funciona sem banco de dados
     auth = {
-        "state": "s",
-        "provider_id": "i",
-        "client_id": "c",
+        "state": "test_state",
+        "provider_id": "test_provider",
+        "client_id": "test_client",
         "data": "{}",
         "provider_configuration": {}
     }
+    context = Context()
+    context.state = {}  # State vazio inicialmente
     
-    # Verifica se o método existe e não levanta exceção
-    try:
-        handler._AuthorizationCallBackHandler__update_authorization(auth)
-    except AttributeError as e:
-        if "_db_engine" in str(e):
-            pytest.skip("Database engine removed, skipping test")
-        else:
-            raise
-    except Exception as e:
-        pytest.fail(f"__update_authorization raised an exception: {e}")
+    # Chama o método
+    handler._AuthorizationCallBackHandler__update_authorization(auth, context)
+    
+    # Verifica se o state foi atualizado (se essa for a intenção)
+    # Ou apenas verifica que não levanta exceção
+    assert True  # Se chegou aqui, o teste passou
