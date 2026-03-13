@@ -56,5 +56,16 @@ setup(
         "pip>=26.0",  # CVE-2026-1703: path traversal when extracting wheels; fixed in 26.0
         "setuptools>=78.1.1",  # PYSEC-2022-43012, PYSEC-2025-49, CVE-2024-6345
         "uwsgi (>=2.0.28,<3.0.0)",
-    ],
+    ],  
+    extras_require={
+        "test": [
+            "pytest",
+            "pytest-cov",
+            "flake8",
+            "spid-sp-test",
+            "pytest-asyncio",
+            "pyOpenSSL>=24.0",
+            "pip-audit>=2.10.0,<3.0.0",
+        ],
+    }
 )
