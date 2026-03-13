@@ -86,5 +86,27 @@ jobs:
           echo "## Coverage report (CIE OIDC backend) - Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          python -m pytest iam-proxy-italia-project/backends/cieoidc/tests/ --cov=backends.cieoidc --cov-config=pyproject.toml --cov-report=term -q >> $GITHUB_STEP_SUMMARY 2>&1
+          
+          # Executa os testes e captura tanto o output quanto o código de saída
+          python -m pytest iam-proxy-italia-project/backends/cieoidc/tests/ \
+            --cov=backends.cieoidc \
+            --cov-config=pyproject.toml \
+            --cov-report=term -q 2>&1 | tee -a $GITHUB_STEP_SUMMARY
+          
+          # Captura o código de saída do pytest (${PIPESTATUS[0]} no bash)
+          exit_code=${PIPESTATUS[0]}
+          
           echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          # Mostra o código de saída para debug
+          echo "Pytest exit code: $exit_code"
+          
+          # Se houver falha, mostra os últimos logs do pytest
+          if [ $exit_code -ne 0 ]; then
+            echo "Pytest failed with exit code $exit_code"
+            # Tenta rodar novamente sem redirecionamento para ver o erro completo
+            echo "Running pytest again to show full error:"
+            python -m pytest iam-proxy-italia-project/backends/cieoidc/tests/ -v
+          fi
+          
+          exit $exit_code
