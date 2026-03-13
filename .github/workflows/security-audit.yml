@@ -51,10 +51,11 @@ jobs:
           DEPTH_COMMITS: 50
         run: bash .github/scripts/patch-pyeudiw-branch.sh
 
-      - name: Install dependencies with Poetry
+      - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install --extras test
+          python -m pip install --upgrade pip
+          pip install setuptools wheel
+          pip install .[test]
 
       - name: Install pip-audit
         run: poetry run pip install pip-audit
