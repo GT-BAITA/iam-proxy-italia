@@ -49,7 +49,18 @@ def handler():
         trust_evaluator=trust_evaluator
     )
 
-
+# Adicione um teste de debug para ver o que __get_authorization retorna
+def test_debug_get_authorization(handler):
+    context = Context()
+    auth_state = create_auth_state()
+    context.state = {"satosa_authz_state": auth_state}
+    context.qs_params = {"state": "dummy_state", "code": "code123", "iss": "http://cie-provider.example.org:8002/oidc/op"}
+    
+    # Chama o método privado diretamente para ver o que retorna
+    authorization = handler._AuthorizationCallBackHandler__get_authorization("dummy_state", context)
+    assert authorization is not None, "__get_authorization retornou None"
+    assert authorization.get("client_id") == "client123"
+    
 @pytest.mark.parametrize("qs_params", [
     {"error": "invalid_request"},
     {"state": None},
