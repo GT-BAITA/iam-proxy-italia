@@ -55,18 +55,27 @@ jobs:
           DEPTH_COMMITS: 50
         run: bash .github/scripts/patch-pyeudiw-branch.sh
 
-      - name: Install dependencies with Poetry
+      - name: Patch dependencies if matching branch exists
+        env:
+          CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+          TARGET_BRANCH: ${{ github.base_ref || 'master' }}
+        run: bash .github/scripts/patch-pyeudiw-branch.sh || echo "Patch script skipped or failed, continuing..."
+
+      - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install --extras test
+          python -m pip install --upgrade pip
+          # Install the local package with [test] extras defined in setup.py
+          pip install .[test]
+          # If you still need the 'iam-proxy' project dependencies:
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run pytest with coverage
         env:
-          PYTHONPATH: iam-proxy-italia-project
+          PYTHONPATH: .
         run: |
-          poetry run pytest iam-proxy-italia-project/backends/cieoidc/tests/ \
+          # Use the direct pytest command since we aren't using 'poetry run'
+          pytest iam-proxy-italia-project/backends/cieoidc/tests/ \
             --cov=backends.cieoidc \
-            --cov-config=pyproject.toml \
             --cov-report=term-missing \
             --cov-report=html:htmlcov \
             --cov-report=xml:coverage.xml \
