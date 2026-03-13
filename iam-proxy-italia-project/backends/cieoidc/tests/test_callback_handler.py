@@ -3,17 +3,18 @@ from unittest.mock import MagicMock, patch
 from satosa.context import Context
 from satosa.response import Response
 from backends.cieoidc.endpoints.authorization_callback_endpoint import AuthorizationCallBackHandler
+from backends.cieoidc.models.oidc_auth import OidcAuthentication  # Importe o modelo
 from ..utils.clients.oidc import OidcUserInfo
 from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
 
 
 def create_auth_state():
-    """Retorna um estado de autorização válido"""
+    """Retorna um estado de autorização válido no formato que OidcAuthentication espera"""
     return {
         "state": "dummy_state",
         "provider_id": "http://cie-provider.example.org:8002/oidc/op",
         "client_id": "client123",
-        "data": '{"redirect_uri":"http://satosa-nginx.example.org/cb"}',
+        "data": "{\"redirect_uri\": \"http://satosa-nginx.example.org/cb\"}",
         "provider_configuration": {
             "openid_provider": {
                 "token_endpoint": "http://cie-provider.example.org/op/token"
@@ -49,18 +50,30 @@ def handler():
         trust_evaluator=trust_evaluator
     )
 
-# Adicione um teste de debug para ver o que __get_authorization retorna
+
 def test_debug_get_authorization(handler):
     context = Context()
     auth_state = create_auth_state()
+    
+    # Verifica se o auth_state é válido para OidcAuthentication
+    try:
+        oidc_auth = OidcAuthentication(**auth_state)
+        print(f"OidcAuthentication válido: {oidc_auth}")
+    except Exception as e:
+        print(f"Erro ao criar OidcAuthentication: {e}")
+        assert False, f"auth_state inválido para OidcAuthentication: {e}"
+    
     context.state = {"satosa_authz_state": auth_state}
     context.qs_params = {"state": "dummy_state", "code": "code123", "iss": "http://cie-provider.example.org:8002/oidc/op"}
     
-    # Chama o método privado diretamente para ver o que retorna
     authorization = handler._AuthorizationCallBackHandler__get_authorization("dummy_state", context)
+    
+    print(f"Authorization retornado: {authorization}")
+    
     assert authorization is not None, "__get_authorization retornou None"
     assert authorization.get("client_id") == "client123"
-    
+
+
 @pytest.mark.parametrize("qs_params", [
     {"error": "invalid_request"},
     {"state": None},
@@ -69,7 +82,7 @@ def test_debug_get_authorization(handler):
 def test_us01(handler, qs_params):
     context = Context()
     context.qs_params = qs_params
-    context.state = {}  # Adicionado state vazio
+    context.state = {}
     with pytest.raises(Exception):
         handler.endpoint(context)
 
