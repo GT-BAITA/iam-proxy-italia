@@ -13,7 +13,6 @@ from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.response import Redirect
 from ..models.oidc_auth import OidcAuthentication
-from ..storage.db_engine import OidcDbEngine
 from ..utils import KeyUsage
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import create_jws
@@ -49,8 +48,6 @@ class AuthorizationHandler(BaseEndpoint):
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = trust_chains
-        self._db_engine = OidcDbEngine(config.get("db_config", {}))
-        self._db_engine.connect()
 
     @property
     def _jwks(self) -> dict:
@@ -130,7 +127,7 @@ class AuthorizationHandler(BaseEndpoint):
             provider_configuration=trust_chain.subject_configuration.payload["metadata"]
         )
 
-        self.__insert(authorization_entity)
+        self.__insert(authorization_entity, context)
 
         self.__create_jws(authz_data)
 
@@ -180,8 +177,8 @@ class AuthorizationHandler(BaseEndpoint):
         )
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
-
-        scope = self.config["metadata"]["openid_relying_party"]["scope"]
+        # local do campo scope alterado para ser válido, fora da entity configuration
+        scope = self.config["scope"]
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
@@ -197,8 +194,8 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values="https://www.spid.gov.it/SpidL2",
-                # TODO Ask Giuseppe: Django OIDCFED_ACR_PROFILES empty or not?
+                acr_values=self.config["acr_values"],
+                # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
                 jti=str(uuid.uuid4()),
@@ -301,7 +298,8 @@ class AuthorizationHandler(BaseEndpoint):
 
         return uri_path
 
-    def __insert(self, obj: dict):
+    def __insert(self, obj: dict, context):
+
         """
         method __insert:
         This method insert the input dictionary into DB layer.
@@ -319,12 +317,29 @@ class AuthorizationHandler(BaseEndpoint):
 
         try:
             auth = OidcAuthentication(**obj)
-            if self._db_engine.add_session(auth) < 1:
-                logger.error("Unable to insert the Authentication object")
-        except ValidationError as e:
-            logger.debug(e)
-        # todo manage result
+            self.__prepare_for_insert(auth)
+            auth.id = str(uuid.uuid4())
 
-        logger.debug(
-            f"Registration success for input: {obj}"
-        )
+            auth_dump = auth.model_dump(mode="json")
+
+            # Salva no context (recebido como parâmetro)
+            # Substituímos a implementação o mongo db
+            # colocando as informações no context do satosa
+            if context:
+                context.state["satosa_authz_state"] = auth_dump
+            else:
+                logger.warning("Context não disponível para salvar auth")
+
+            logger.info(f"Objeto de autenticação criado (stateless) com sucesso")
+
+        except ValidationError as e:
+            logger.error(f"Erro de validação: {e}")
+        except Exception as e:
+            logger.error(f"Erro inesperado: {e}")
+
+    def __prepare_for_insert(self, auth_entity: OidcAuthentication):
+        """Prepara a entidade para inserção"""
+        now = datetime.now(timezone.utc)
+        if auth_entity.created is None:
+            auth_entity.created = now
+        auth_entity.modified = now
