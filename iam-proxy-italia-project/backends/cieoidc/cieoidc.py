@@ -81,6 +81,7 @@ class CieOidcBackend(BackendModule):
         meta = get_metadata_desc_for_oauth_backend(self._client_id, self.config)
         return meta
 
+    # FIXME: Procura a trustchain testando todas as TAs, deve ser mudado quando for dinamico
     def _generate_trust_chains(self) -> dict:
         '''
         private method _generate_trust_chains:
@@ -94,27 +95,41 @@ class CieOidcBackend(BackendModule):
         )
 
         httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
-
-        ta_url = self.config["trust_chain"]["config"]["trust_anchor"][0]
-        jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
-
-        trust_anchor_ec = EntityStatement(jwt, httpc_params=httpc_params)
-
-        trust_anchor_ec.validate_by_itself()
-
-        providers = self.config["providers"]
-
-        trust_chains = dict()
-
-        for provider_url in providers:
+        ta_urls = self.config["trust_chain"]["config"]["trust_anchor"]
+        
+        # Valida todas as TAs
+        trust_anchors = []
+        for ta_url in ta_urls:
             try:
-                trust_chains[provider_url] = CieOidcBackend.generate_trust_chain(
-                    trust_anchor_ec, provider_url, httpc_params)
-            except Exception as exception:
-                logger.error(
-                    f"Exception {exception} generated from this provider {provider_url}"
-                )
-
+                jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
+                ta_ec = EntityStatement(jwt, httpc_params=httpc_params)
+                ta_ec.validate_by_itself()
+                trust_anchors.append(ta_ec)
+                logger.info(f"Successfully validated Trust Anchor: {ta_url}")
+            except Exception as e:
+                logger.error(f"Failed to validate TA {ta_url}: {e}")
+        
+        if not trust_anchors:
+            raise ValueError("No valid Trust Anchors found")
+        
+        providers = self.config["providers"]
+        trust_chains = dict()
+        
+        for provider_url in providers:
+            # Tenta com cada TA até encontrar uma que funcione
+            for ta_ec in trust_anchors:
+                try:
+                    trust_chains[provider_url] = CieOidcBackend.generate_trust_chain(
+                        ta_ec, provider_url, httpc_params)
+                    logger.info(f"Provider {provider_url} validated with TA {ta_ec.sub}")
+                    break
+                except Exception as e:
+                    logger.debug(f"Provider {provider_url} failed with TA {ta_ec.sub}: {e}")
+                    continue
+            else:
+                # Se nenhuma TA funcionou
+                logger.debug(f"Provider {provider_url} could not be validated with any TA")
+        
         return trust_chains
 
     @staticmethod
