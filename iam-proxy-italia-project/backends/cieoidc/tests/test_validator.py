@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -7,6 +8,9 @@ from backends.cieoidc.utils.validators import (
     validate_metadata_algs,
     validate_metadata_algs_v1,
     ValidationError,
+    SIGNING_ALG_VALUES_SUPPORTED,
+    ENCRYPTION_ALG_VALUES_SUPPORTED,
+    ENCRYPTION_ENC_SUPPORTED,
 )
 
 
@@ -39,7 +43,6 @@ def test_validate_public_jwks_invalid_jwk(mock_key_from_jwk):
     mock_key_from_jwk.side_effect = Exception("invalid jwk")
     with pytest.raises(ValidationError):
         validate_public_jwks({"invalid": True})
-
 
 @patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_private_jwks_success(mock_key_from_jwk):

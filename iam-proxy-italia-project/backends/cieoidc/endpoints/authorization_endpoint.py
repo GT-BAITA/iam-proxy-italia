@@ -16,7 +16,7 @@ from ..models.oidc_auth import OidcAuthentication
 from ..utils import KeyUsage
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import create_jws
-from ..utils.helpers.jwks import public_jwk_from_private_jwk
+from ..utils.helpers.jwks import  public_jwk_from_private_jwk
 from ..utils.helpers.misc import (
     random_string,
     get_pkce,
@@ -83,8 +83,7 @@ class AuthorizationHandler(BaseEndpoint):
             ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "client_id"],
             "Client ID")
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata",
-             "openid_relying_party", "redirect_uris"],
+            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "redirect_uris"],
             "Redirect URI")
 
     def endpoint(self, context, *args):
@@ -106,8 +105,7 @@ class AuthorizationHandler(BaseEndpoint):
 
         trust_chain = self.__get_trust_chain(provider_url)
 
-        metadata = trust_chain.subject_configuration.payload["metadata"]["openid_provider"]
-        authorization_endpoint = metadata["authorization_endpoint"]
+        authorization_endpoint = trust_chain.subject_configuration.payload["metadata"]["openid_provider"]["authorization_endpoint"]
 
         # generate the authorization dict
         authz_data = self.__authorization_data(authorization_endpoint)
@@ -160,6 +158,7 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params[provider: {provider}]"
         )
         return self.trust_chains[provider]
+
 
     def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
         """
@@ -220,24 +219,24 @@ class AuthorizationHandler(BaseEndpoint):
         :param authz_data: dict
         """
         logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
-            f"Params [authz_data {authz_data}]"
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [authz_data {authz_data}]"
         )
         if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["length"]:
-            raise ValueError("code_challenge length in configuration is empty")
+            raise ValueError(f"code_challenge length in configuration is empty")
 
         if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["method"]:
-            raise ValueError("code_challenge method in configuration is empty")
+            raise ValueError(f"code_challenge method in configuration is empty")
 
-        rp_meta = self.config["metadata"]["openid_relying_party"]["code_challenge"]
-        code_challenge_length: int = rp_meta["length"]
-        code_challenge_method: str = rp_meta["method"]
+        code_challenge_length: int = self.config["metadata"]["openid_relying_party"]["code_challenge"]["length"]
+
+        code_challenge_method: str = self.config["metadata"]["openid_relying_party"]["code_challenge"]["method"]
 
         pkce_values = get_pkce(code_challenge_method, code_challenge_length)
 
         authz_data.update(pkce_values)
 
     def __create_jws(self, authz_data: dict):
+
         """
         method private __create_jws:
         This method get key and generate the JWS.
@@ -250,15 +249,12 @@ class AuthorizationHandler(BaseEndpoint):
         :param authz_data: dict
         """
         logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
-            f"Params [authz_data {authz_data}]"
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [authz_data {authz_data}]"
         )
 
         authz_data_obj = deepcopy(authz_data)
 
-        authz_data_obj["iss"] = self.config["metadata"]["openid_relying_party"][
-            "client_id"
-        ]
+        authz_data_obj["iss"] = self.config["metadata"]["openid_relying_party"]["client_id"]
 
         jwk_core_sig = get_key(self._jwks_core, KeyUsage.signature)
 
@@ -268,6 +264,7 @@ class AuthorizationHandler(BaseEndpoint):
 
     @staticmethod
     def generate_uri(authz_data: dict) -> str:
+
         """
         method __generate_uri:
         This method generate the URI from authorization data.
@@ -281,8 +278,7 @@ class AuthorizationHandler(BaseEndpoint):
         :return: dict
         """
         logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
-            f"Params [authz_data {authz_data}]"
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [authz_data {authz_data}]"
         )
 
         uri_path = http_dict_to_redirect_uri_path(

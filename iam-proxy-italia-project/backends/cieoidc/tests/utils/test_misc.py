@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+import json
 
 from backends.cieoidc.utils.helpers.misc import (
     get_http_url,
@@ -11,7 +12,6 @@ from backends.cieoidc.utils.helpers.misc import (
     import_string,
     process_user_attributes,
 )
-
 
 def test_get_http_url_sync():
     mock_resp = MagicMock()
@@ -27,7 +27,6 @@ def test_get_http_url_sync():
         assert resp == [mock_resp]
         m.assert_called_once()
 
-
 def test_dynamic_class_loader_not_callable():
     with patch(
         "backends.cieoidc.utils.helpers.misc.get_dynamic_class",
@@ -36,7 +35,6 @@ def test_dynamic_class_loader_not_callable():
         with pytest.raises(TypeError):
             dynamic_class_loader("x", "y")
 
-
 def test_cacheable_get_http_url_invalid_params():
     with pytest.raises(ValueError):
         cacheable_get_http_url(
@@ -44,7 +42,6 @@ def test_cacheable_get_http_url_invalid_params():
             "http://example.com",
             httpc_params={"connection": {}},
         )
-
 
 def test_lru_cached_get_http_url_calls_get_http_url():
     mock_resp = MagicMock()
@@ -62,7 +59,6 @@ def test_lru_cached_get_http_url_calls_get_http_url():
         )
         assert resp == mock_resp
 
-
 def test_get_jwks_direct():
     metadata = {
         "jwks": {
@@ -71,7 +67,6 @@ def test_get_jwks_direct():
     }
     result = get_jwks(metadata, httpc_params={})
     assert result == [{"kid": "1"}]
-
 
 def test_get_jwks_uri_exception():
     metadata = {"jwks_uri": "http://bad"}
@@ -82,7 +77,6 @@ def test_get_jwks_uri_exception():
         result = get_jwks(metadata, httpc_params={})
         assert result == []
 
-
 def test_get_jwks_signed_uri_exception():
     metadata = {"signed_jwks_uri": "http://bad"}
     with patch(
@@ -92,23 +86,19 @@ def test_get_jwks_signed_uri_exception():
         result = get_jwks(metadata, httpc_params={})
         assert result == []
 
-
 def test_get_jwk_from_jwt_not_found():
     jwt = "eyJraWQiOiAiYWJjIn0.dummy.dummy"
     provider_jwks = {"keys": [{"kid": "xyz"}]}
     result = get_jwk_from_jwt(jwt, provider_jwks)
     assert result == {}
 
-
 def test_import_string_invalid_path():
     with pytest.raises(ImportError):
         import_string("invalidpath")
 
-
 def test_import_string_missing_attr():
     with pytest.raises(ImportError):
         import_string("json.not_existing")
-
 
 def test_process_user_attributes_string_mapping():
     userinfo = {"email": "a@b.it"}
