@@ -4,14 +4,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptojwt.jwk.rsa import RSAKey
 from cryptojwt.jwk.ec import ECKey
 from unittest.mock import patch
-from backends.cieoidc.utils.helpers.jwtse import decrypt_jwe
-from cryptojwt.exception import UnsupportedAlgorithm
-
-from backends.cieoidc.utils.helpers.jwtse import (
-    unpad_jwt_payload,
-    create_jws,
-    verify_at_hash,
-)
+from cryptojwt.jws.utils import left_hash
 
 from backends.cieoidc.utils.helpers.jwtse import (
     unpad_jwt_head,
@@ -19,11 +12,9 @@ from backends.cieoidc.utils.helpers.jwtse import (
     create_jwe,
     decrypt_jwe,
     create_jws,
-    verify_jws,
     verify_at_hash,
 )
 
-from cryptojwt.jws.utils import left_hash
 
 @pytest.fixture
 def rsa_jwk():
@@ -46,6 +37,7 @@ def ec_jwk():
     key = ECKey(priv_key=priv, kid="ec1")
     return key.serialize(private=True)
 
+
 def test_us01():
     jwt = (
         "eyJhbGciOiJSUzI1NiJ9."
@@ -54,6 +46,7 @@ def test_us01():
     )
     payload = unpad_jwt_payload(jwt)
     assert payload["sub"] == "user123"
+
 
 def test_us02():
     payload = {"sub": "user123"}
@@ -73,10 +66,12 @@ def test_us02():
             jws = create_jws(payload, jwk)
             assert jws == "signed.jwt"
 
+
 def test_us03():
     id_token = {"at_hash": "hrOQHuo3oE6FR82RIiX1SA"}
     with patch("cryptojwt.jws.utils.left_hash", return_value="hrOQHuo3oE6FR82RIiX1SA"):
         assert verify_at_hash(id_token, "access_token") is True
+
 
 def test_us04():
     id_token = {"at_hash": "wrong"}
@@ -89,7 +84,8 @@ def test_us05():
     header = {"alg": "none"}
     payload = {"a": 1}
 
-    import base64, json
+    import base64
+    import json
     jwt = (
         base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
         + "."

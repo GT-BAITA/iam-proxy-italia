@@ -22,20 +22,21 @@ def minimal_config():
         "providers": [
             "http://cie-provider.example.org"
         ],
-        "endpoints":{
+        "endpoints": {
             "test_endpoint": {
-                "module":"backends.cieoidc.endpoints.extend_session_endpoint",
-                "class":"ExtendSessionHandler",
-                "routes":"/extend_session",
+                "module": "backends.cieoidc.endpoints.extend_session_endpoint",
+                "class": "ExtendSessionHandler",
+                "routes": "/extend_session",
                 "config": {
                     "httpc_params": {
-                    "connection": "false",
-                    "session": "6"
+                        "connection": "false",
+                        "session": "6"
                     }
                 }
             }
         }
     }
+
 
 @pytest.fixture
 def internal_attributes ():
@@ -80,8 +81,10 @@ def backend(minimal_config, internal_attributes):
         )
         return backend
 
+
 def test_initialization_sets_client_id(backend):
     assert backend._client_id == "client123"
+
 
 def test_initialization_calls_generate_trust_chains(minimal_config, internal_attributes):
     with patch.object(
@@ -96,9 +99,11 @@ def test_initialization_calls_generate_trust_chains(minimal_config, internal_att
         )
         mock_tc.assert_called_once()
 
+
 def test_start_auth_without_authorization_endpoint_raises(backend):
     with pytest.raises(ValueError):
         backend.start_auth(Context(), MagicMock())
+
 
 def test_start_auth_calls_authorization_endpoint(backend):
     mock_auth = MagicMock(return_value="response")
@@ -133,6 +138,7 @@ def test_get_metadata_desc(mock_meta, backend):
 
     mock_meta.assert_called_once_with(backend._client_id, backend.config)
     assert res == "metadata-desc"
+
 
 @patch("backends.cieoidc.cieoidc.get_entity_configurations")
 @patch("backends.cieoidc.cieoidc.EntityStatement")

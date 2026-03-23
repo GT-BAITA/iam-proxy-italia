@@ -1,4 +1,3 @@
-import json
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -8,9 +7,6 @@ from backends.cieoidc.utils.validators import (
     validate_metadata_algs,
     validate_metadata_algs_v1,
     ValidationError,
-    SIGNING_ALG_VALUES_SUPPORTED,
-    ENCRYPTION_ALG_VALUES_SUPPORTED,
-    ENCRYPTION_ENC_SUPPORTED,
 )
 
 
@@ -36,7 +32,6 @@ def test_validate_public_jwks_private_key_rejected(
     jwks = {"kty": "RSA", "kid": "priv"}
     with pytest.raises(ValidationError):
         validate_public_jwks(jwks)
-
 
 @patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_public_jwks_invalid_jwk(mock_key_from_jwk):

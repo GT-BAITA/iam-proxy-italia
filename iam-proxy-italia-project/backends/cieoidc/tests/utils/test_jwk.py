@@ -1,10 +1,10 @@
-from cryptojwt.jwk.rsa import new_rsa_key
 from backends.cieoidc.utils.helpers.jwks import (
     create_jwk,
     public_jwk_from_private_jwk,
     private_pem_from_jwk,
     public_pem_from_jwk,
 )
+
 
 def test_us01():
     jwk = create_jwk()

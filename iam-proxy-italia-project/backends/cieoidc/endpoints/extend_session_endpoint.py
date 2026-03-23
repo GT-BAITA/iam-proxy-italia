@@ -7,7 +7,7 @@ from satosa.attribute_mapping import AttributeMapper
 from satosa.context import Context
 from satosa.internal import InternalData
 from satosa.response import Response
-from satosa.exception import SATOSAAuthenticationError, SATOSABadRequestError
+from satosa.exception import SATOSAAuthenticationError
 from backends.cieoidc.utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import (
@@ -22,15 +22,15 @@ logger = logging.getLogger(__name__)
 class ExtendSessionHandler(BaseEndpoint):
 
     def __init__(
-            self,
-            config: dict,
-            internal_attributes: dict[str, dict[str, str | list[str]]],
-            base_url: str,
-            name: str,
-            auth_callback_func: Callable[[Context, InternalData], Response],
-            converter: AttributeMapper,
-            trust_evaluator: CombinedTrustEvaluator
-        ) -> None:
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
+        trust_evaluator: CombinedTrustEvaluator
+    ) -> None:
 
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
@@ -78,7 +78,10 @@ class ExtendSessionHandler(BaseEndpoint):
                                                                 jws_core=self.jws_core,
                                                                 httpc_params=self.httpc_params)
 
-            token_response = oAuth2_authorization.refresh_token(authorization_token, authorization_token.get("client_id"))
+            token_response = oAuth2_authorization.refresh_token(
+                authorization_token,
+                authorization_token.get("client_id"),
+            )
 
             if token_response.status_code == 400:
                 logger.warning("Get 400 from token response service")
@@ -86,11 +89,8 @@ class ExtendSessionHandler(BaseEndpoint):
 
             refresh_token_response = json.loads(token_response.content.decode())
 
-            # @TODO Verify with Giuseppe
-            decoded_access_token = unpad_jwt_payload(refresh_token_response["access_token"])
-
-            # @TODO Verify with Giuseppe
-            decoded_refresh_token = unpad_jwt_payload(refresh_token_response["refresh_token"])
+            unpad_jwt_payload(refresh_token_response["access_token"])
+            unpad_jwt_payload(refresh_token_response["refresh_token"])
 
             self.__save_refresh_token(authorization_token, refresh_token_response)
 
@@ -101,8 +101,6 @@ class ExtendSessionHandler(BaseEndpoint):
         except Exception as exception:  # pragma: no cover
             logger.warning(f"Refresh Token request failed: {exception}")
             raise SATOSAAuthenticationError(context.state, f"Refresh Token request failed: {exception}")
-
-
 
     def __get_authorization_token(self, user: dict) -> dict:
         """
@@ -155,7 +153,6 @@ class ExtendSessionHandler(BaseEndpoint):
         authorization_token["refresh_token"] = refresh_token_response["refresh_token"]
 
         authorization_token["access_token"] = refresh_token_response["access_token"]
-
 
         logger.debug(
             f"authorization_token: {authorization_token}"

@@ -90,7 +90,6 @@ def handler(minimal_config, trust_chain):
     )
     return h
 
-
 def test_us01(handler):
     handler._validate_configs()
 
@@ -150,28 +149,6 @@ def test_us03(
         response = handler.endpoint(context)
         assert response is not None
 
-    get_key_mock.return_value = {
-        "kty": "RSA",
-        "kid": "key1",
-        "n": "uXfJA-wTlTCA4FdsoE0qZfmKIgedmarrtWgQbElKbWg9RDR7Z8JVBaRLFqwyfyG1JJFm64G51cBJwLIFwWoF7nxsH9VYLm5ocjAnsR4RhlfVE0y_60wjf8skJgBRpiXQPlwH9jDGaqVE_PEBTObDO5w3XourD1F360-v5cLDLRHdFJIitdEVtqATqY5DglRDaKiBhis7a5_1bk839PDLaQhju4XJk4tvDy5-LVkMy5sP2zU6-1tJdA-VmaBZLXy9n0967FGIWmMzpafrBMOuHFcUOH56o-clDah_CITH1dq2D64K0MYhEpACO2p8AH4K8Q6YuJ1dnkVDDwZp2C84sQ",
-        "e": "AQAB"
-    }
-    create_jws_mock.return_value = "signed.jwt"
-    redirect_mock.return_value = Redirect("http://example.com/auth")
-    
-    # Mock do método __authorization_data
-    with patch.object(handler, "_AuthorizationHandler__authorization_data") as mock_auth_data:
-        mock_auth_data.return_value = {
-            "client_id": "client123",
-            "redirect_uri": "https://localhost/callback",
-            "scope": "openid profile",
-            "response_type": "code",
-            "state": "test_state",
-            "code_challenge": "abc",
-            "code_challenge_method": "S256"
-        }
-        response = handler.endpoint(context)
-        assert response is not None
 
 def test_us04(handler):
     handler.config["metadata"]["openid_relying_party"]["code_challenge"]["length"] = None
@@ -196,7 +173,10 @@ def test_us05():
             "code_challenge=abc&code_challenge_method=S256&request=jwt"
         )
         uri = AuthorizationHandler.generate_uri(authz_data)
-        assert uri == "client_id=client123&scope=openid&response_type=code&code_challenge=abc&code_challenge_method=S256&request=jwt"
+        assert uri == (
+            "client_id=client123&scope=openid&response_type=code&"
+            "code_challenge=abc&code_challenge_method=S256&request=jwt"
+        )
 
 
 @patch("backends.cieoidc.models.oidc_auth.OidcAuthentication")

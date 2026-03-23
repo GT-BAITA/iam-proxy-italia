@@ -1,6 +1,5 @@
 import uuid
 import pytest
-import os
 from backends.cieoidc.tests import settings_test
 from unittest.mock import MagicMock, patch
 from bson.binary import Binary
@@ -64,7 +63,8 @@ def test_us06(storage):
 
 def test_us07(storage):
     uid = uuid.uuid4()
-    doc = {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client", "endpoint": "auth","data": "{}","provider_configuration": {}}
+    doc = {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client",
+            "endpoint": "auth", "data": "{}", "provider_configuration": {}}
 
     entity = storage._from_doc(doc, OidcAuthentication)
     assert entity.id == str(uid)
@@ -125,7 +125,8 @@ def test_us14(storage):
     storage._MongoStorage__client = MagicMock()
     uid = uuid.uuid4()
     storage._MongoStorage__client["testdb"]["auth"].find.return_value = [
-        {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client", "endpoint": "auth","data": "{}","provider_configuration": {}}
+        {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client", "endpoint": "auth",
+         "data": "{}", "provider_configuration": {}}
     ]
 
     res = storage._find_all("auth", {"state": "x"}, OidcAuthentication)
@@ -155,6 +156,7 @@ def test_us18(storage):
 def test_us19(storage):
     assert storage._to_uuid("not-a-uuid") is None
 
+
 def test_connect_and_close(storage):
     storage._MongoStorage__client = None
     with patch("backends.cieoidc.storage.impl.mongo_storage.MongoClient") as mock_client:
@@ -163,6 +165,7 @@ def test_connect_and_close(storage):
         storage.close()
         assert storage._MongoStorage__client is None
 
+
 def test_is_connected(storage):
     storage._MongoStorage__client = MagicMock()
     storage._MongoStorage__client.server_info.return_value = {}
@@ -170,6 +173,7 @@ def test_is_connected(storage):
 
     storage._MongoStorage__client.server_info.side_effect = InvalidOperation
     assert storage.is_connected() is False
+
 
 def test_to_uuid_valid(storage):
     uid = str(uuid.uuid4())
@@ -181,9 +185,10 @@ def test_update_no_id(storage):
     provider_configuration={"config": "dummy"})
     assert storage._update("auth", entity) is False
 
+
 def test_remove_invalid_id(storage):
     assert storage._remove("auth", 123) is False  # non string
 
+
 def test_find_by_id_invalid(storage):
     assert storage._find_by_id("auth", 123, OidcAuthentication) is None
-
