@@ -44,7 +44,6 @@ class ExtendSessionHandler(BaseEndpoint):
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
 
-
     def endpoint(self, context, *args):
         """
         Handles the token endpoint of the op

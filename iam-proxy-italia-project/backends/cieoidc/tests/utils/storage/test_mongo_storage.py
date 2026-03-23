@@ -188,7 +188,7 @@ def test_update_no_id(storage):
         data="{}",
         provider_id="p1",
         endpoint="http://example.org",
-        provider_configuration={"config": "dummy"}
+        provider_configuration={"config": "dummy"},
     )
     assert storage._update("auth", entity) is False
 

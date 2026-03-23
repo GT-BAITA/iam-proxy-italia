@@ -86,6 +86,7 @@ def test_us04(mock_public_pem, mock_private_pem, federation_entity, jwk_example)
         }
     }
 
+
 def test_us05(federation_entity):
     with patch(
         "backends.cieoidc.models.federation.FederationEntityConfiguration.pems_as_dict",

@@ -67,6 +67,7 @@ def internal_attributes():
         }
     }
 
+
 @pytest.fixture
 def backend(minimal_config, internal_attributes):
     with patch.object(
@@ -144,12 +145,12 @@ def test_get_metadata_desc(mock_meta, backend):
 @patch("backends.cieoidc.cieoidc.EntityStatement")
 @patch("backends.cieoidc.cieoidc.CieOidcBackend.generate_trust_chain")
 def test_generate_trust_chains(
-    mock_gen_tc,
-    mock_entity_statement,
-    mock_get_ec,
-    minimal_config,
-    internal_attributes,
-    backend):
+        mock_gen_tc,
+        mock_entity_statement,
+        mock_get_ec,
+        minimal_config,
+        internal_attributes,
+        backend):
     mock_get_ec.return_value = ["jwt"]
     mock_ec = MagicMock()
     mock_ec.sub = "ta"

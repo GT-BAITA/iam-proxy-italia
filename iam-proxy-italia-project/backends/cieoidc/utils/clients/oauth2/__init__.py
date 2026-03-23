@@ -93,7 +93,6 @@ class OAuth2AuthorizationCodeGrant(object):
         logger.debug(f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
                      f"Params[Client_id: {client_id}]")
 
-
         token_request_data = dict(
             client_id=client_id,
             client_assertion_type=self.client_assertion_type
