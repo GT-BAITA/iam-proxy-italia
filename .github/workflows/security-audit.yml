@@ -83,7 +83,7 @@ jobs:
           # --cache-dir: use fresh dir to avoid CacheControl "deserialization failed" warnings from pip's incompatible http cache
           pip-audit --cache-dir /tmp/pip-audit-cache --desc \
             --ignore-vuln CVE-2024-23342 \
-            --ignore-vuln CVE-2026-26007 \
+            --ignore-vuln CVE-2026-26007
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "### ⚠️ Whitelisted CVEs" >> $GITHUB_STEP_SUMMARY

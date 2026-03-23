@@ -149,7 +149,6 @@ def test_us03(
         response = handler.endpoint(context)
         assert response is not None
 
-
 def test_us04(handler):
     handler.config["metadata"]["openid_relying_party"]["code_challenge"]["length"] = None
     with pytest.raises(ValueError):
