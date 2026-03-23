@@ -18,6 +18,7 @@ def test_us01():
         res = http_get_sync(["http://example.com"])
         assert res == [resp]
 
+
 def test_us02():
     resp = MagicMock()
     resp.status_code = 404

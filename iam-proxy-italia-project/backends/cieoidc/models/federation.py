@@ -29,7 +29,7 @@ def is_leaf(statement_metadata):
 
 class FederationEntityConfiguration:
     def __init__(self, sub, exp, default_signature_alg, jwks_core, jwks_fed, entity_type, metadata,
-                authority_hints=None, trust_marks=None, trust_mark_issuers=None, constraints=None):
+                 authority_hints=None, trust_marks=None, trust_mark_issuers=None, constraints=None):
         self.sub = sub
         self.default_exp: int = exp
         self.default_signature_alg: str = default_signature_alg

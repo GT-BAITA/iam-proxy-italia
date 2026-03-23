@@ -64,7 +64,7 @@ def test_us06(storage):
 def test_us07(storage):
     uid = uuid.uuid4()
     doc = {"_id": Binary.from_uuid(uid), "state": "x", "client_id": "client",
-            "endpoint": "auth", "data": "{}", "provider_configuration": {}}
+           "endpoint": "auth", "data": "{}", "provider_configuration": {}}
 
     entity = storage._from_doc(doc, OidcAuthentication)
     assert entity.id == str(uid)
@@ -181,8 +181,15 @@ def test_to_uuid_valid(storage):
 
 
 def test_update_no_id(storage):
-    entity = OidcAuthentication(state="s1", client_id="c1", code="code1", data="{}", provider_id="p1",endpoint="http://example.org",
-    provider_configuration={"config": "dummy"})
+    entity = OidcAuthentication(
+        state="s1",
+        client_id="c1",
+        code="code1",
+        data="{}",
+        provider_id="p1",
+        endpoint="http://example.org",
+        provider_configuration={"config": "dummy"}
+    )
     assert storage._update("auth", entity) is False
 
 

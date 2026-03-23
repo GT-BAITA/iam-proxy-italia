@@ -39,33 +39,33 @@ def minimal_config():
 
 
 @pytest.fixture
-def internal_attributes ():
+def internal_attributes():
     return {
-            "attributes": {
-                "username": {
-                    "oidc": ["preferred_username", "sub"],
-                    "spid": ["spid_code"]
-                },
-                "first_name": {
-                    "oidc": ["given_name"],
-                    "ldap": ["cn"]
-                },
-                "last_name": {
-                    "oidc": ["family_name"],
-                    "ldap": ["sn"]
-                },
-                "email": {
-                    "oidc": ["email"],
-                    "ldap": ["mail"]
-                },
-                "fiscal_number": {
-                    "oidc": ["https://attributes.eid.gov.it/fiscal_number"]
-                }
+        "attributes": {
+            "username": {
+                "oidc": ["preferred_username", "sub"],
+                "spid": ["spid_code"]
             },
-            "template_attributes": {
-                "full_name": "{first_name} {last_name}"
+            "first_name": {
+                "oidc": ["given_name"],
+                "ldap": ["cn"]
+            },
+            "last_name": {
+                "oidc": ["family_name"],
+                "ldap": ["sn"]
+            },
+            "email": {
+                "oidc": ["email"],
+                "ldap": ["mail"]
+            },
+            "fiscal_number": {
+                "oidc": ["https://attributes.eid.gov.it/fiscal_number"]
             }
+        },
+        "template_attributes": {
+            "full_name": "{first_name} {last_name}"
         }
+    }
 
 @pytest.fixture
 def backend(minimal_config, internal_attributes):

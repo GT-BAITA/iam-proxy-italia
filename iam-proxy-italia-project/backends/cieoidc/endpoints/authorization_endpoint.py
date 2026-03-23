@@ -84,7 +84,7 @@ class AuthorizationHandler(BaseEndpoint):
             "Client ID")
         self._require_config_field(
             ["endpoints", "authorization_endpoint", "config", "metadata",
-            "openid_relying_party", "redirect_uris"],
+             "openid_relying_party", "redirect_uris"],
             "Redirect URI")
 
     def endpoint(self, context, *args):
@@ -225,10 +225,10 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params [authz_data {authz_data}]"
         )
         if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["length"]:
-            raise ValueError(f"code_challenge length in configuration is empty")
+            raise ValueError("code_challenge length in configuration is empty")
 
         if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["method"]:
-            raise ValueError(f"code_challenge method in configuration is empty")
+            raise ValueError("code_challenge method in configuration is empty")
 
         rp_meta = self.config["metadata"]["openid_relying_party"]["code_challenge"]
         code_challenge_length: int = rp_meta["length"]
@@ -239,7 +239,6 @@ class AuthorizationHandler(BaseEndpoint):
         authz_data.update(pkce_values)
 
     def __create_jws(self, authz_data: dict):
-
         """
         method private __create_jws:
         This method get key and generate the JWS.
@@ -270,7 +269,6 @@ class AuthorizationHandler(BaseEndpoint):
 
     @staticmethod
     def generate_uri(authz_data: dict) -> str:
-
         """
         method __generate_uri:
         This method generate the URI from authorization data.

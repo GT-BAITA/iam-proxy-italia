@@ -19,6 +19,7 @@ from pyeudiw.trust.dynamic import CombinedTrustEvaluator
 
 logger = logging.getLogger(__name__)
 
+
 class ExtendSessionHandler(BaseEndpoint):
 
     def __init__(
@@ -72,11 +73,6 @@ class ExtendSessionHandler(BaseEndpoint):
                 jws_core=self.jws_core,
                 httpc_params=self.httpc_params,
             )
-
-            oAuth2_authorization = OAuth2AuthorizationCodeGrant(grant_type=self.grant_type,
-                                                                client_assertion_type=self.client_assertion_type,
-                                                                jws_core=self.jws_core,
-                                                                httpc_params=self.httpc_params)
 
             token_response = oAuth2_authorization.refresh_token(
                 authorization_token,

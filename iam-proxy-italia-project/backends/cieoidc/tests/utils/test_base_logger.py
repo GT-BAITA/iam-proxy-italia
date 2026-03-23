@@ -18,6 +18,7 @@ def context():
     ctx.state = "test-session"
     return ctx
 
+
 @patch("backends.cieoidc.utils.base_logger.lu.get_session_id")
 @patch("backends.cieoidc.utils.base_logger.logger")
 def test_log_with_string_context(mock_logger, mock_get_session_id, base_logger):

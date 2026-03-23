@@ -27,8 +27,6 @@ class OAuth2AuthorizationCodeGrant(object):
         self.jws_core = kwargs.get("jws_core")
         self.httpc_params = kwargs.get("httpc_params")
 
-
-
     def access_token_request(
         self,
         redirect_uri: str,

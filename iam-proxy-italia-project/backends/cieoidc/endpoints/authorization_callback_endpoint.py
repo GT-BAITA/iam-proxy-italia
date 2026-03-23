@@ -17,9 +17,10 @@ from ..models.user import OidcUser
 from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
-from pyeudiw.trust.dynamic import CombinedTrustEvaluator # todo remove pyeudiw dependency
+from pyeudiw.trust.dynamic import CombinedTrustEvaluator  # todo remove pyeudiw dependency
 
 logger = logging.getLogger(__name__)
+
 
 class AuthorizationCallBackHandler(BaseEndpoint):
 
@@ -42,7 +43,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
-
 
     def endpoint(self, context, *args):
         """
@@ -90,7 +90,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             grant_type=self.grant_type,
             client_assertion_type=self.client_assertion_type,
             jws_core=self.jws_core,
-            httpc_params=self.httpc_params
+            httpc_params=self.httpc_params,
         )
 
         token_response = oAuth2_authorization.access_token_request(
@@ -101,7 +101,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             token_endpoint_url=authorization["provider_configuration"]["openid_provider"].get(
                 "token_endpoint"
             ),
-            code_verifier=authorization_data.get("code_verifier")
+            code_verifier=authorization_data.get("code_verifier"),
         )
 
         if not token_response:
@@ -158,8 +158,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
                 f"{authorization.get('state')} to {authorization.get('provider_id')}"
             )
             raise SATOSAAuthenticationError(
-                context.state, "User_info request failed for state: "
-                f"{authorization.get('state')} to {authorization.get('provider_id')}"
+                context.state,
+                f"User_info request failed for state: {authorization.get('state')} "
+                f"to {authorization.get('provider_id')}",
             )
 
         user_attrs = process_user_attributes(user_info, self.claims, authorization)
@@ -282,7 +283,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         )
 
     def __check_provider(self, provider_is: str, iss: str) -> bool:
-
         """
         method __check_issuer:
         This method check if provider is equal to iss.

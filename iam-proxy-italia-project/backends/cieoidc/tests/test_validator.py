@@ -33,11 +33,13 @@ def test_validate_public_jwks_private_key_rejected(
     with pytest.raises(ValidationError):
         validate_public_jwks(jwks)
 
+
 @patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_public_jwks_invalid_jwk(mock_key_from_jwk):
     mock_key_from_jwk.side_effect = Exception("invalid jwk")
     with pytest.raises(ValidationError):
         validate_public_jwks({"invalid": True})
+
 
 @patch("backends.cieoidc.utils.validators.key_from_jwk_dict")
 def test_validate_private_jwks_success(mock_key_from_jwk):

@@ -71,7 +71,6 @@ class OidcDbEngine(OidcStorage):
             alive |= _callable()
         return alive
 
-
     def add_session(self, entity: OidcAuthentication) -> int:
         self.prepare_for_insert(entity)
         entity.id = str(uuid.uuid4())

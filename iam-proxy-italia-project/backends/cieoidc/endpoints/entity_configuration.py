@@ -66,7 +66,7 @@ class EntityConfigHandler(BaseEndpoint):
             self._entity_type,
             self._metadata,
             self._auth_hints,
-            self._trust_marks
+            self._trust_marks,
         )
         return _entity.entity_configuration_as_jws if jws else json.dumps(_entity.entity_configuration_as_dict)
 
@@ -76,7 +76,6 @@ class EntityConfigHandler(BaseEndpoint):
         if not jws:
             return json.dumps(res)
         return create_jws(res, self._jwks_federation[0])
-
 
     def endpoint(self, context: Context) -> Redirect | Response:
         """

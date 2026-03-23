@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock
-import json
 
 from backends.cieoidc.utils.helpers.misc import (
     get_http_url,
