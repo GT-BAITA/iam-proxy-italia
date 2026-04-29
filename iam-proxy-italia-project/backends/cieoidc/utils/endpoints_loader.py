@@ -21,8 +21,7 @@ class EndpointsLoader:
             base_url: str,
             name: str,
             auth_callback_func: Callable[[Context, InternalData], Response] | None = None,
-            converter: AttributeMapper | None = None,
-            trust_evaluator=None
+            converter: AttributeMapper | None = None
     ):
         """
         Create a backend/frontend dynamically.
@@ -67,7 +66,6 @@ class EndpointsLoader:
                     name,
                     auth_callback_func,
                     converter,
-                    trust_evaluator
                 )
                 for path in routes:
                     endpoint_instances[path.lstrip("/")] = _handler_instance

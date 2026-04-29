@@ -8,7 +8,7 @@ from satosa.backends.oauth import get_metadata_desc_for_oauth_backend
 from .utils.endpoints_loader import EndpointsLoader
 
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
-from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
+from pyeudiw.federation.statements import EntityStatement
 
 
 logger = logging.getLogger(__name__)
@@ -17,13 +17,10 @@ logger = logging.getLogger(__name__)
 class CieOidcBackend(BackendModule):
 
     def __init__(self, callback, internal_attributes, module_config, base_url, name):
-        logger.debug(
-            f"Initializing: {self.__class__.__name__}."
-        )
+        logger.debug(f"Initializing: {self.__class__.__name__}.")
         super().__init__(callback, internal_attributes, base_url, name)
         self.config = module_config
         self.endpoints = {}
-        self.trust_chain = self._generate_trust_chains()
         metadata = self.config.get("metadata", {}).get("openid_relying_party", {})
         self._client_id = metadata.get("client_id") or f"{base_url}/{name}"
 
@@ -46,7 +43,9 @@ class CieOidcBackend(BackendModule):
 
         authorization_endpoint = self.endpoints.get("authorization")
         if not authorization_endpoint:
-            raise ValueError("No authorization endpoint configured in the CieOidc backend")
+            raise ValueError(
+                "No authorization endpoint configured in the CieOidc backend"
+            )
 
         return authorization_endpoint(context)
 
@@ -58,7 +57,6 @@ class CieOidcBackend(BackendModule):
             self.name,
             self.auth_callback_func,
             self.converter,
-            self.trust_chain,
         )
 
         url_map = []
@@ -67,7 +65,7 @@ class CieOidcBackend(BackendModule):
             url_map.append((f"{self.name}/{path}", inst))
 
         for path, inst in url_map:
-            key = path.split('/')[-1].replace('-', '_').replace('$', '')
+            key = path.split("/")[-1].replace("-", "_").replace("$", "")
             self.endpoints[key] = inst
 
         logger.debug(f"Loaded CIE OIDC endpoints: {url_map}")
@@ -81,67 +79,16 @@ class CieOidcBackend(BackendModule):
         meta = get_metadata_desc_for_oauth_backend(self._client_id, self.config)
         return meta
 
-    # FIXME: Procura a trustchain testando todas as TAs, deve ser mudado quando for dinamico
-    def _generate_trust_chains(self) -> dict:
-        '''
-        private method _generate_trust_chains:
-        This method generate a list of trust-chain. After create a entity statement
-        for Trust Anchor, validate itself, and call the generate_trust_chain
-        for all providers into configuration.
-        Add all providers into dictionary.
-        '''
-        logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
-        )
-
-        httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
-        ta_urls = self.config["trust_chain"]["config"]["trust_anchor"]
-        
-        # Valida todas as TAs
-        trust_anchors = []
-        for ta_url in ta_urls:
-            try:
-                jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
-                ta_ec = EntityStatement(jwt, httpc_params=httpc_params)
-                ta_ec.validate_by_itself()
-                trust_anchors.append(ta_ec)
-                logger.info(f"Successfully validated Trust Anchor: {ta_url}")
-            except Exception as e:
-                logger.error(f"Failed to validate TA {ta_url}: {e}")
-        
-        if not trust_anchors:
-            raise ValueError("No valid Trust Anchors found")
-        
-        providers = self.config["providers"]
-        trust_chains = dict()
-        
-        for provider_url in providers:
-            # Tenta com cada TA até encontrar uma que funcione
-            for ta_ec in trust_anchors:
-                try:
-                    trust_chains[provider_url] = CieOidcBackend.generate_trust_chain(
-                        ta_ec, provider_url, httpc_params)
-                    logger.info(f"Provider {provider_url} validated with TA {ta_ec.sub}")
-                    break
-                except Exception as e:
-                    logger.debug(f"Provider {provider_url} failed with TA {ta_ec.sub}: {e}")
-                    continue
-            else:
-                # Se nenhuma TA funcionou
-                logger.debug(f"Provider {provider_url} could not be validated with any TA")
-        
-        return trust_chains
-
     @staticmethod
     def generate_trust_chain(
         trust_anchor_ec: EntityStatement, provider_endpoint: str, httpc_params
     ) -> TrustChainBuilder:
-        '''
+        """
         method _generate_trust_chain:
         This method generate a TrustChain Object from provider endpoint and Trust Anchor.
         After the creation, start and validate the Trust Chain.
 
-        '''
+        """
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
         )

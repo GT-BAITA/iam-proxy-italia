@@ -1,6 +1,7 @@
 import logging
 import inspect
 import json
+from multiprocessing import context
 import uuid
 from datetime import datetime, timezone
 from pydantic import ValidationError
@@ -24,7 +25,8 @@ from ..utils.helpers.misc import (
     http_dict_to_redirect_uri_path
 )
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
-
+from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
+from backends.cieoidc.cieoidc import CieOidcBackend
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,6 @@ class AuthorizationHandler(BaseEndpoint):
             name: str,
             auth_callback_func: Callable[[Context, InternalData], Response],
             converter: AttributeMapper,
-            trust_chains
     ) -> None:
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
@@ -47,7 +48,7 @@ class AuthorizationHandler(BaseEndpoint):
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
-        self.trust_chains = trust_chains
+        self.trust_chains = {}
 
     @property
     def _jwks(self) -> dict:
@@ -159,6 +160,10 @@ class AuthorizationHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
             f"Params[provider: {provider}]"
         )
+
+        if provider not in self.trust_chains:
+            self.trust_chains = self._generate_trust_chains(provider=provider)
+
         return self.trust_chains[provider]
 
     def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
@@ -343,3 +348,51 @@ class AuthorizationHandler(BaseEndpoint):
         if auth_entity.created is None:
             auth_entity.created = now
         auth_entity.modified = now
+
+    def _generate_trust_chains(self, provider: str) -> dict:
+        '''
+        private method _generate_trust_chains:
+        This method generate a list of trust-chain. After create a entity statement
+        for Trust Anchor, validate itself, and call the generate_trust_chain
+        for all providers into configuration.
+        Add all providers into dictionary.
+        '''
+        logger.debug(
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
+        )
+
+        httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
+        ta_urls = self.config["trust_chain"]["config"]["trust_anchor"]
+
+        # Valida todas as TAs
+        trust_anchors = []
+        for ta_url in ta_urls:
+            try:
+                jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
+                ta_ec = EntityStatement(jwt, httpc_params=httpc_params)
+                ta_ec.validate_by_itself()
+                trust_anchors.append(ta_ec)
+                logger.info(f"Successfully validated Trust Anchor: {ta_url}")
+            except Exception as e:
+                logger.error(f"Failed to validate TA {ta_url}: {e}")
+
+        if not trust_anchors:
+            raise ValueError("No valid Trust Anchors found")
+
+        trust_chains = dict()
+
+        # Tenta com cada TA até encontrar uma que funcione
+        for ta_ec in trust_anchors:
+            try:
+                trust_chains[provider] = CieOidcBackend.generate_trust_chain(
+                    ta_ec, provider, httpc_params)
+                logger.info(f"Provider {provider} validated with TA {ta_ec.sub}")
+                break
+            except Exception as e:
+                logger.debug(f"Provider {provider} failed with TA {ta_ec.sub}: {e}")
+                continue
+        else:
+            # Se nenhuma TA funcionou
+            logger.debug(f"Provider {provider} could not be validated with any TA")
+
+        return trust_chains
