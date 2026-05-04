@@ -111,7 +111,7 @@ class AuthorizationHandler(BaseEndpoint):
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
-        authz_data = self.__authorization_data(authorization_endpoint)
+        authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
         authz_data["prompt"] = self.config["prompt"]
@@ -166,7 +166,7 @@ class AuthorizationHandler(BaseEndpoint):
 
         return self.trust_chains[provider]
 
-    def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
+    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -183,7 +183,8 @@ class AuthorizationHandler(BaseEndpoint):
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
         # local do campo scope alterado para ser válido, fora da entity configuration
-        scope = self.config["scope"]
+        scope = context.qs_params.get("scope")
+        acr_values = context.qs_params.get("acr_values")
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
@@ -199,7 +200,7 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values=self.config["acr_values"],
+                acr_values=acr_values,
                 # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
