@@ -9,5 +9,6 @@ class OidcUser(BaseModel):
     last_name: str
     email: str
     sub: str
-    fiscal_number: str
-    attributes: Optional[dict] = None
+
+    class Config:
+        extra = "allow"

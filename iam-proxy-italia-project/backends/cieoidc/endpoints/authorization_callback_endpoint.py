@@ -17,7 +17,6 @@ from ..models.user import OidcUser
 from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
-from pyeudiw.trust.dynamic import CombinedTrustEvaluator  # todo remove pyeudiw dependency
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         name: str,
         auth_callback_func: Callable[[Context, InternalData], Response],
         converter: AttributeMapper,
-        trust_evaluator: CombinedTrustEvaluator
     ) -> None:
 
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)

@@ -22,7 +22,7 @@ from ..utils.helpers.misc import (
     random_string,
     get_pkce,
     get_key,
-    http_dict_to_redirect_uri_path
+    http_dict_to_redirect_uri_path,
 )
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
 from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
@@ -34,18 +34,18 @@ logger = logging.getLogger(__name__)
 class AuthorizationHandler(BaseEndpoint):
 
     def __init__(
-            self,
-            config: dict,
-            internal_attributes: dict[str, dict[str, str | list[str]]],
-            base_url: str,
-            name: str,
-            auth_callback_func: Callable[[Context, InternalData], Response],
-            converter: AttributeMapper,
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
     ) -> None:
-        logger.debug(
-            f"Initializing: {self.__class__.__name__}."
+        logger.debug(f"Initializing: {self.__class__.__name__}.")
+        super().__init__(
+            config, internal_attributes, base_url, name, auth_callback_func, converter
         )
-        super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = {}
@@ -53,7 +53,9 @@ class AuthorizationHandler(BaseEndpoint):
     @property
     def _jwks(self) -> dict:
         _dic_jwks: dict[str, dict] = {self._entity_type: {}}
-        _dic_jwks[self._entity_type]["jwks"] = [public_jwk_from_private_jwk(_k) for _k in self._jwks_core]
+        _dic_jwks[self._entity_type]["jwks"] = [
+            public_jwk_from_private_jwk(_k) for _k in self._jwks_core
+        ]
         return _dic_jwks
 
     def _require_config_field(self, path, label):
@@ -72,21 +74,47 @@ class AuthorizationHandler(BaseEndpoint):
         Validates essential configuration fields for the authorization endpoint.
         """
         self._require_config_field(
-            ["endpoints", "authorization_endpoint"], "Authorization endpoint")
+            ["endpoints", "authorization_endpoint"], "Authorization endpoint"
+        )
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config"], "Authorization endpoint config")
+            ["endpoints", "authorization_endpoint", "config"],
+            "Authorization endpoint config",
+        )
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata"], "Metadata")
+            ["endpoints", "authorization_endpoint", "config", "metadata"], "Metadata"
+        )
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party"],
-            "OpenId Relying Party")
+            [
+                "endpoints",
+                "authorization_endpoint",
+                "config",
+                "metadata",
+                "openid_relying_party",
+            ],
+            "OpenId Relying Party",
+        )
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "client_id"],
-            "Client ID")
+            [
+                "endpoints",
+                "authorization_endpoint",
+                "config",
+                "metadata",
+                "openid_relying_party",
+                "client_id",
+            ],
+            "Client ID",
+        )
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata",
-             "openid_relying_party", "redirect_uris"],
-            "Redirect URI")
+            [
+                "endpoints",
+                "authorization_endpoint",
+                "config",
+                "metadata",
+                "openid_relying_party",
+                "redirect_uris",
+            ],
+            "Redirect URI",
+        )
 
     def endpoint(self, context, *args):
         """
@@ -107,7 +135,9 @@ class AuthorizationHandler(BaseEndpoint):
 
         trust_chain = self.__get_trust_chain(provider_url)
 
-        metadata = trust_chain.subject_configuration.payload["metadata"]["openid_provider"]
+        metadata = trust_chain.subject_configuration.payload["metadata"][
+            "openid_provider"
+        ]
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
@@ -125,7 +155,9 @@ class AuthorizationHandler(BaseEndpoint):
             endpoint=authorization_endpoint,
             provider_id=trust_chain.subject,
             data=json.dumps(authz_data),
-            provider_configuration=trust_chain.subject_configuration.payload["metadata"]
+            provider_configuration=trust_chain.subject_configuration.payload[
+                "metadata"
+            ],
         )
 
         self.__insert(authorization_entity, context)
@@ -166,7 +198,9 @@ class AuthorizationHandler(BaseEndpoint):
 
         return self.trust_chains[provider]
 
-    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
+    def __authorization_data(
+        self, provider_authorization_endpoint: str, context
+    ) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -184,17 +218,21 @@ class AuthorizationHandler(BaseEndpoint):
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
         # local do campo scope alterado para ser válido, fora da entity configuration
         scope = context.qs_params.get("scope")
-        acr_values = context.qs_params.get("acr_values")
+        acr_values = context.qs_params.get("acr_values") or []
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
-        response_type: str = self.config["metadata"]["openid_relying_party"]["response_types"][0]
+        response_type: str = self.config["metadata"]["openid_relying_party"][
+            "response_types"
+        ][0]
 
         try:
             authz_data = dict(
                 iss=self.config["metadata"]["openid_relying_party"]["client_id"],
                 scope=scope,
-                redirect_uri=self.config["metadata"]["openid_relying_party"]["redirect_uris"][0],
+                redirect_uri=self.config["metadata"]["openid_relying_party"][
+                    "redirect_uris"
+                ][0],
                 response_type=response_type,
                 nonce=random_string(32),
                 state=random_string(32),
@@ -209,7 +247,9 @@ class AuthorizationHandler(BaseEndpoint):
                 claims=claim,
             )
         except Exception as exception:
-            logger.error("Exception where generate the authz_data: {}".format(exception))
+            logger.error(
+                "Exception where generate the authz_data: {}".format(exception)
+            )
             raise exception
 
         return authz_data
@@ -229,10 +269,14 @@ class AuthorizationHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
             f"Params [authz_data {authz_data}]"
         )
-        if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["length"]:
+        if not self.config["metadata"]["openid_relying_party"]["code_challenge"][
+            "length"
+        ]:
             raise ValueError("code_challenge length in configuration is empty")
 
-        if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["method"]:
+        if not self.config["metadata"]["openid_relying_party"]["code_challenge"][
+            "method"
+        ]:
             raise ValueError("code_challenge method in configuration is empty")
 
         rp_meta = self.config["metadata"]["openid_relying_party"]["code_challenge"]
@@ -298,14 +342,13 @@ class AuthorizationHandler(BaseEndpoint):
                 "response_type": authz_data["response_type"],
                 "code_challenge": authz_data["code_challenge"],
                 "code_challenge_method": authz_data["code_challenge_method"],
-                "request": authz_data["request"]
+                "request": authz_data["request"],
             }
         )
 
         return uri_path
 
     def __insert(self, obj: dict, context):
-
         """
         method __insert:
         This method insert the input dictionary into DB layer.
@@ -351,13 +394,13 @@ class AuthorizationHandler(BaseEndpoint):
         auth_entity.modified = now
 
     def _generate_trust_chains(self, provider: str) -> dict:
-        '''
+        """
         private method _generate_trust_chains:
         This method generate a list of trust-chain. After create a entity statement
         for Trust Anchor, validate itself, and call the generate_trust_chain
         for all providers into configuration.
         Add all providers into dictionary.
-        '''
+        """
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
         )
@@ -386,7 +429,8 @@ class AuthorizationHandler(BaseEndpoint):
         for ta_ec in trust_anchors:
             try:
                 trust_chains[provider] = CieOidcBackend.generate_trust_chain(
-                    ta_ec, provider, httpc_params)
+                    ta_ec, provider, httpc_params
+                )
                 logger.info(f"Provider {provider} validated with TA {ta_ec.sub}")
                 break
             except Exception as e:
