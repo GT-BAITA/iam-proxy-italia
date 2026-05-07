@@ -144,7 +144,8 @@ class AuthorizationHandler(BaseEndpoint):
         authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
-        authz_data["prompt"] = self.config["prompt"]
+        if context.qs_params.get("prompt"):
+            authz_data["prompt"] = context.qs_params.get("prompt")
 
         # generation pkce value
         self.__pkce_generation(authz_data)
