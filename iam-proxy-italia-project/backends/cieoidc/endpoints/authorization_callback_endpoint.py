@@ -33,7 +33,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         converter: AttributeMapper,
     ) -> None:
 
-        super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
+        super().__init__(
+            config, internal_attributes, base_url, name, auth_callback_func, converter
+        )
 
         self.httpc_params = config.get("httpc_params", {})
         self.claims = config.get("claims", {})
@@ -57,8 +59,11 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         )
         if context.qs_params.get("error"):
             logger.debug(
-                f"error: {context.qs_params.get('error')} with details: {context.qs_params.get('error_description')}")
-            raise SATOSAAuthenticationError(context.state, context.qs_params.get('error_description'))
+                f"error: {context.qs_params.get('error')} with details: {context.qs_params.get('error_description')}"
+            )
+            raise SATOSAAuthenticationError(
+                context.state, context.qs_params.get("error_description")
+            )
 
         state: str = context.qs_params.get("state")
         authorization = self.__get_authorization(state, context)
@@ -79,7 +84,10 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         authorization["code"] = code
 
         # authorization_token =  self.__create_token(authorization, code)
-        if authorization["client_id"] != self.config["metadata"]["openid_relying_party"]["client_id"]:
+        if (
+            authorization["client_id"]
+            != self.config["metadata"]["openid_relying_party"]["client_id"]
+        ):
             logger.debug("invalid request - Relying party not found")
             raise SATOSABadRequestError("Invalid relaying party")
 
@@ -96,9 +104,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             state=authorization.get("state"),
             code=code,
             client_id=authorization.get("client_id"),
-            token_endpoint_url=authorization["provider_configuration"]["openid_provider"].get(
-                "token_endpoint"
-            ),
+            token_endpoint_url=authorization["provider_configuration"][
+                "openid_provider"
+            ].get("token_endpoint"),
             code_verifier=authorization_data.get("code_verifier"),
         )
 
@@ -106,9 +114,20 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.debug("Token response is empty")
             raise SATOSAAuthenticationError(context.state, "Token response is empty")
 
-        jwks = get_jwks(authorization["provider_configuration"].get("openid_provider"), self.httpc_params)
+        jwks = get_jwks(
+            authorization["provider_configuration"].get("openid_provider"),
+            self.httpc_params,
+        )
+        logger.debug("AQUI")
+        logger.debug("AQUI")
+        logger.debug("AQUI")
+        logger.debug("AQUI")
+        logger.debug(jwks)
         access_token = token_response["access_token"]
         id_token = token_response["id_token"]
+
+        logger.debug(access_token)
+        logger.debug(id_token)
 
         op_ac_jwk = get_jwk_from_jwt(access_token, jwks)
         op_id_jwk = get_jwk_from_jwt(id_token, jwks)
@@ -118,11 +137,21 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             raise SATOSAAuthenticationError(context.state, "AC JWK or ID JWK is empty")
 
         try:
-            verify_jws(access_token, op_ac_jwk, self.configuration_plugins.get_signing_alg_values_supported)
-            verify_jws(id_token, op_id_jwk, self.configuration_plugins.get_signing_alg_values_supported)
+            verify_jws(
+                access_token,
+                op_ac_jwk,
+                self.configuration_plugins.get_signing_alg_values_supported,
+            )
+            verify_jws(
+                id_token,
+                op_id_jwk,
+                self.configuration_plugins.get_signing_alg_values_supported,
+            )
         except Exception as exception:
             logger.error(f"Exception from verify_jws, detail: {exception}")
-            raise SATOSAAuthenticationError(context.state, "tokens jws verification failed")
+            raise SATOSAAuthenticationError(
+                context.state, "tokens jws verification failed"
+            )
 
         decoded_id_token = unpad_jwt_payload(id_token)
         # logger.debug(f"Token decoded:  {decoded_id_token}")
@@ -140,8 +169,11 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         )
 
         # retrieve user data
-        oidc_user = OidcUserInfo(authorization["provider_configuration"].get("openid_provider"), self.jws_core,
-                                 self.httpc_params)
+        oidc_user = OidcUserInfo(
+            authorization["provider_configuration"].get("openid_provider"),
+            self.jws_core,
+            self.httpc_params,
+        )
         user_info = oidc_user.get_userinfo(
             authorization.get("state"),
             authorization.get("access_token"),
@@ -167,7 +199,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
                 "No user attributes have been processed: "
                 f"user_info: {user_info} claims: {self.claims} authorization: {authorization}"
             )
-            raise SATOSAAuthenticationError(context.state, "No user attributes have been processed")
+            raise SATOSAAuthenticationError(
+                context.state, "No user attributes have been processed"
+            )
 
         user = self.__add_user(user_attrs)
 
@@ -175,14 +209,16 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.error("User is empty")
             raise SATOSAAuthenticationError(context.state, "User is empty")
 
-        if token_response.get('refresh_token', None):
+        if token_response.get("refresh_token", None):
             authorization["refresh_token"] = token_response["refresh_token"]
 
         authorization["user"] = user
 
         self.__update_authorization(authorization, context)
 
-        internal_data = self._translate_response(user.model_dump(mode="json"), iss, authorization.get("client_id"))
+        internal_data = self._translate_response(
+            user.model_dump(mode="json"), iss, authorization.get("client_id")
+        )
         return self._auth_callback(context, internal_data)
 
     def __get_authorization(self, state: str, context) -> dict:
@@ -198,7 +234,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         """
         logger.debug(
-            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [state {state}]")
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [state {state}]"
+        )
         # não usa mais mongo DB
         # busca as informações no context
         try:
@@ -224,8 +261,14 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.debug(e)
             return None
 
-    def __update_authentication_token(self, authorization: dict, access_token: dict, id_token: dict,
-                                      token_response: dict, context):
+    def __update_authentication_token(
+        self,
+        authorization: dict,
+        access_token: dict,
+        id_token: dict,
+        token_response: dict,
+        context,
+    ):
         """
         method __update_authentication_token:
         This method update the authentication token. Add this properties:
@@ -247,9 +290,10 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         authorization["scope"] = token_response.get("scope")
         authorization["token_type"] = token_response["token_type"]
         authorization["expires_in"] = token_response["expires_in"]
-        self      # - name: Copy Satosa IDP Metadata to djangosaml2 SP
-      #   run: |
-      #     wget -vd --no-check-certificate https://iam-proxy-italia.example.org/Saml2IDP/metadata -O Docker-compose/djangosaml2_sp/saml2_sp/saml2_config/iam-proxy-italia.xml.__update_authorization(authorization, context)
+        self  # - name: Copy Satosa IDP Metadata to djangosaml2 SP
+
+    #   run: |
+    #     wget -vd --no-check-certificate https://iam-proxy-italia.example.org/Saml2IDP/metadata -O Docker-compose/djangosaml2_sp/saml2_sp/saml2_config/iam-proxy-italia.xml.__update_authorization(authorization, context)
 
     def __update_authorization(self, authorization_input: dict, context):
         """
@@ -276,9 +320,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.error("Unable to insert the AuthenticationToken object")
             logger.debug(e)
 
-        logger.debug(
-            f"Registration success for input: {authorization_input}"
-        )
+        logger.debug(f"Registration success for input: {authorization_input}")
 
     def __check_provider(self, provider_is: str, iss: str) -> bool:
         """
@@ -307,14 +349,18 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         return provider_is == iss
 
-    def _translate_response(self, attributes: dict, issuer: str, sub: str) -> InternalData:
+    def _translate_response(
+        self, attributes: dict, issuer: str, sub: str
+    ) -> InternalData:
         """Translates oidc response to SATOSA internal response.
 
         :param attributes: Dictionary with attribute name as key.
         :param issuer: The oidc op that gave the response.
         :returns: A SATOSA internal response
         """
-        auth_info = AuthenticationInformation("https://www.spid.gov.it/SpidL2", str(round(time.time())), issuer)
+        auth_info = AuthenticationInformation(
+            "https://www.spid.gov.it/SpidL2", str(round(time.time())), issuer
+        )
         internal_resp = InternalData(auth_info=auth_info)
         internal_resp.attributes = self._converter.to_internal("cie_oidc", attributes)
         internal_resp.subject_id = sub

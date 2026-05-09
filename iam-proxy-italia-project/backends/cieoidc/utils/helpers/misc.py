@@ -173,7 +173,9 @@ def dynamic_class_loader(
     if callable(dynamic_class):
         storage_instance = dynamic_class(**init_params)
     else:
-        raise TypeError(f"The class '{class_name}' in module '{module_name}' is not callable.")
+        raise TypeError(
+            f"The class '{class_name}' in module '{module_name}' is not callable."
+        )
     return storage_instance
 
 
@@ -238,7 +240,9 @@ def get_pkce(code_challenge_method: str = "S256", code_challenge_length: int = 6
     # https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
     code_verifier_length = secrets.choice(range(43, 128 + 1))
     alpha = string.ascii_letters + string.digits + "-._~"
-    code_verifier = "".join([secrets.choice(alpha) for _ in range(code_verifier_length)])
+    code_verifier = "".join(
+        [secrets.choice(alpha) for _ in range(code_verifier_length)]
+    )
 
     code_challenge = hashers.get(code_challenge_method)(
         code_verifier.encode("utf-8")
@@ -255,7 +259,7 @@ def get_pkce(code_challenge_method: str = "S256", code_challenge_length: int = 6
 
 def get_key(jwks, use=KeyUsage.signature):
     for jwk in jwks:
-        if jwk['use'] == use:
+        if jwk["use"] == use:
             return jwk
     return jwks[0]
 
@@ -301,37 +305,41 @@ def get_jwks(metadata: dict, httpc_params) -> dict:
 
     """
     jwks_list = []
-    if metadata.get('jwks'):
+    logger.debug("SEGUEM OS METADADOS")
+    logger.debug(metadata)
+    if metadata.get("jwks"):
         jwks_list = metadata["jwks"]["keys"]
-    elif metadata.get('jwks_uri'):
+    elif metadata.get("jwks_uri"):
         try:
             jwks_uri = metadata["jwks_uri"]
             jwks_list = get_http_url(
-                [jwks_uri], httpc_params=httpc_params
+                [jwks_uri], httpc_params=httpc_params, http_async=False
             )
-            jwks_list = json.loads(jwks_list[0])
+            jwks_list = json.loads(jwks_list[0].text)
         except Exception as e:
-            logger.error(f"Failed to download jwks from {jwks_uri}: {e}")
-    elif metadata.get('signed_jwks_uri'):
+            logger.error(f"Failed to download jwks from {jwks_uri}: {e}", exc_info=e)
+    elif metadata.get("signed_jwks_uri"):
         try:
             signed_jwks_uri = metadata["signed_jwks_uri"]
             jwks_list = get_http_url(
-                [signed_jwks_uri], httpc_params=httpc_params
-            )[0]
+                [signed_jwks_uri], httpc_params=httpc_params, http_async=False
+            )[0].text
         except Exception as e:
-            logger.error(f"Failed to download jwks from {signed_jwks_uri}: {e}")
+            logger.error(
+                f"Failed to download jwks from {signed_jwks_uri}: {e}", exc_info=e
+            )
     return jwks_list
 
 
 def get_jwk_from_jwt(jwt: str, provider_jwks: dict) -> dict:
     """
-        docs here
-        This method is ported from spid-cie-oidc-django because we used into callback method
+    docs here
+    This method is ported from spid-cie-oidc-django because we used into callback method
     """
     head = unpad_jwt_head(jwt)
     kid = head["kid"]
-    if isinstance(provider_jwks, dict) and provider_jwks.get('keys'):
-        provider_jwks = provider_jwks['keys']
+    if isinstance(provider_jwks, dict) and provider_jwks.get("keys"):
+        provider_jwks = provider_jwks["keys"]
     for jwk in provider_jwks:
         if jwk["kid"] == kid:
             return jwk
@@ -340,16 +348,16 @@ def get_jwk_from_jwt(jwt: str, provider_jwks: dict) -> dict:
 
 def unpad_jwt_head(jwt: str) -> dict:
     """
-        docs here
-        see get_jwk_from_jwt
+    docs here
+    see get_jwk_from_jwt
     """
     return unpad_jwt_element(jwt, position=0)
 
 
 def unpad_jwt_element(jwt: str, position: int) -> dict:
     """
-        docs here
-        see unpad_jwt_head
+    docs here
+    see unpad_jwt_head
     """
     b = jwt.split(".")[position]
     padded = f"{b}{'=' * divmod(len(b), 4)[1]}"
@@ -366,7 +374,7 @@ def issuer_prefixed_sub(
 def import_string(dotted_path):
 
     try:
-        module_path, attr_name = dotted_path.rsplit('.', 1)
+        module_path, attr_name = dotted_path.rsplit(".", 1)
     except ValueError as err:
         raise ImportError(f"{dotted_path} path not found") from err
 
@@ -375,7 +383,9 @@ def import_string(dotted_path):
     try:
         return getattr(module, attr_name)
     except AttributeError as err:
-        raise ImportError(f"Module '{module_path}' dont have the '{attr_name}'.") from err
+        raise ImportError(
+            f"Module '{module_path}' dont have the '{attr_name}'."
+        ) from err
 
 
 def process_user_attributes(userinfo: dict, user_map: dict, authz: dict):
