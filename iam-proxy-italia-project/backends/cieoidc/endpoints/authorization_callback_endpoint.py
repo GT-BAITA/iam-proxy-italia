@@ -14,7 +14,7 @@ from ..utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from ..utils.clients.oidc import OidcUserInfo
 from ..models.oidc_auth import OidcAuthentication
 from ..models.user import OidcUser
-from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
+from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
 
@@ -36,7 +36,6 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
 
         self.httpc_params = config.get("httpc_params", {})
-        self.claims = config.get("claims", {})
         self.client_assertion_type = config.get("client_assertion_type")
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
@@ -161,12 +160,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
                 f"to {authorization.get('provider_id')}",
             )
 
-        user_attrs = process_user_attributes(user_info, self.claims, authorization)
+        user_attrs = user_info
         if not user_attrs:
-            logger.error(
-                "No user attributes have been processed: "
-                f"user_info: {user_info} claims: {self.claims} authorization: {authorization}"
-            )
             raise SATOSAAuthenticationError(context.state, "No user attributes have been processed")
 
         user = self.__add_user(user_attrs)
@@ -318,6 +313,10 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         internal_resp = InternalData(auth_info=auth_info)
         internal_resp.attributes = self._converter.to_internal("cie_oidc", attributes)
         internal_resp.subject_id = sub
+
+        if "uid" not in internal_resp.attributes:
+            internal_resp.attributes['uid'] = internal_resp.attributes["sub"]
+
         return internal_resp
 
     @staticmethod
