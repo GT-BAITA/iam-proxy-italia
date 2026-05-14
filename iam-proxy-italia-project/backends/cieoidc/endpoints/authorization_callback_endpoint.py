@@ -160,6 +160,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
                 f"to {authorization.get('provider_id')}",
             )
 
+        # Não é mais necessário filtrar/mapear os atributos, repassamos todas as informações de usuario
         user_attrs = user_info
         if not user_attrs:
             raise SATOSAAuthenticationError(context.state, "No user attributes have been processed")
@@ -314,6 +315,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         internal_resp.attributes = self._converter.to_internal("cie_oidc", attributes)
         internal_resp.subject_id = sub
 
+        # Sem o mapeamento do campo claims que foi removido, satosa não recebe um uid (obrigatótio), 
+        # então na ausencia de uid usamos sub para substituir
         if "uid" not in internal_resp.attributes:
             internal_resp.attributes['uid'] = internal_resp.attributes["sub"]
 

@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 class CieOidcBackend(BackendModule):
 
     def __init__(self, callback, internal_attributes, module_config, base_url, name):
-        logger.debug(f"Initializing: {self.__class__.__name__}.")
+        logger.debug(
+            f"Initializing: {self.__class__.__name__}."
+        )
         super().__init__(callback, internal_attributes, base_url, name)
         self.config = module_config
         self.endpoints = {}
@@ -43,9 +45,7 @@ class CieOidcBackend(BackendModule):
 
         authorization_endpoint = self.endpoints.get("authorization")
         if not authorization_endpoint:
-            raise ValueError(
-                "No authorization endpoint configured in the CieOidc backend"
-            )
+            raise ValueError("No authorization endpoint configured in the CieOidc backend")
 
         return authorization_endpoint(context)
 
@@ -65,7 +65,7 @@ class CieOidcBackend(BackendModule):
             url_map.append((f"{self.name}/{path}", inst))
 
         for path, inst in url_map:
-            key = path.split("/")[-1].replace("-", "_").replace("$", "")
+            key = path.split('/')[-1].replace('-', '_').replace('$', '')
             self.endpoints[key] = inst
 
         logger.debug(f"Loaded CIE OIDC endpoints: {url_map}")
@@ -83,12 +83,12 @@ class CieOidcBackend(BackendModule):
     def generate_trust_chain(
         trust_anchor_ec: EntityStatement, provider_endpoint: str, httpc_params
     ) -> TrustChainBuilder:
-        """
+        '''
         method _generate_trust_chain:
         This method generate a TrustChain Object from provider endpoint and Trust Anchor.
         After the creation, start and validate the Trust Chain.
 
-        """
+        '''
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
         )

@@ -1,7 +1,6 @@
 import logging
 import inspect
 import json
-from multiprocessing import context
 import uuid
 from datetime import datetime, timezone
 from pydantic import ValidationError
@@ -32,7 +31,9 @@ logger = logging.getLogger(__name__)
 
 
 class AuthorizationHandler(BaseEndpoint):
-
+    """
+    Não recebe trustchain por passou a ser construída em tempo de execução.
+    """
     def __init__(
         self,
         config: dict,
@@ -53,9 +54,7 @@ class AuthorizationHandler(BaseEndpoint):
     @property
     def _jwks(self) -> dict:
         _dic_jwks: dict[str, dict] = {self._entity_type: {}}
-        _dic_jwks[self._entity_type]["jwks"] = [
-            public_jwk_from_private_jwk(_k) for _k in self._jwks_core
-        ]
+        _dic_jwks[self._entity_type]["jwks"] = [public_jwk_from_private_jwk(_k) for _k in self._jwks_core]
         return _dic_jwks
 
     def _require_config_field(self, path, label):
@@ -73,48 +72,20 @@ class AuthorizationHandler(BaseEndpoint):
         """
         Validates essential configuration fields for the authorization endpoint.
         """
+        self._require_config_field(["endpoints", "authorization_endpoint"], "Authorization endpoint")
         self._require_config_field(
-            ["endpoints", "authorization_endpoint"], "Authorization endpoint"
-        )
+            ["endpoints", "authorization_endpoint", "config"], "Authorization endpoint config")
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config"],
-            "Authorization endpoint config",
-        )
+            ["endpoints", "authorization_endpoint", "config", "metadata"], "Metadata")
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata"], "Metadata"
-        )
+            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party"],
+            "OpenId Relying Party")
         self._require_config_field(
-            [
-                "endpoints",
-                "authorization_endpoint",
-                "config",
-                "metadata",
-                "openid_relying_party",
-            ],
-            "OpenId Relying Party",
-        )
+            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "client_id"],
+            "Client ID")
         self._require_config_field(
-            [
-                "endpoints",
-                "authorization_endpoint",
-                "config",
-                "metadata",
-                "openid_relying_party",
-                "client_id",
-            ],
-            "Client ID",
-        )
-        self._require_config_field(
-            [
-                "endpoints",
-                "authorization_endpoint",
-                "config",
-                "metadata",
-                "openid_relying_party",
-                "redirect_uris",
-            ],
-            "Redirect URI",
-        )
+            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "redirect_uris"],
+            "Redirect URI")
 
     def endpoint(self, context, *args):
         """
@@ -135,15 +106,14 @@ class AuthorizationHandler(BaseEndpoint):
 
         trust_chain = self.__get_trust_chain(provider_url)
 
-        metadata = trust_chain.subject_configuration.payload["metadata"][
-            "openid_provider"
-        ]
+        metadata = trust_chain.subject_configuration.payload["metadata"]["openid_provider"]
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
         authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
+        # Caso prompt esteja presente na requisição, adiciona ao authz, necessário para permitir dinamicidade na request
         if context.qs_params.get("prompt"):
             authz_data["prompt"] = context.qs_params.get("prompt")
 
@@ -156,9 +126,7 @@ class AuthorizationHandler(BaseEndpoint):
             endpoint=authorization_endpoint,
             provider_id=trust_chain.subject,
             data=json.dumps(authz_data),
-            provider_configuration=trust_chain.subject_configuration.payload[
-                "metadata"
-            ],
+            provider_configuration=trust_chain.subject_configuration.payload["metadata"],
         )
 
         self.__insert(authorization_entity, context)
@@ -194,6 +162,7 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params[provider: {provider}]"
         )
 
+        # verifica a existência da trust chain usando provider como chave, caso não encontre, tenta construir a trust chain
         if provider not in self.trust_chains:
             self.trust_chains = self._generate_trust_chains(provider=provider)
 
@@ -218,6 +187,8 @@ class AuthorizationHandler(BaseEndpoint):
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
         # local do campo scope alterado para ser válido, fora da entity configuration
+
+        # Resgatamos do scope e acr_values da request em context, para permitir dinamicidade na request
         scope = context.qs_params.get("scope")
         acr_values = context.qs_params.get("acr_values") or []
 
@@ -231,9 +202,7 @@ class AuthorizationHandler(BaseEndpoint):
             authz_data = dict(
                 iss=self.config["metadata"]["openid_relying_party"]["client_id"],
                 scope=scope,
-                redirect_uri=self.config["metadata"]["openid_relying_party"][
-                    "redirect_uris"
-                ][0],
+                redirect_uri=self.config["metadata"]["openid_relying_party"]["redirect_uris"][0],
                 response_type=response_type,
                 nonce=random_string(32),
                 state=random_string(32),
@@ -248,9 +217,7 @@ class AuthorizationHandler(BaseEndpoint):
                 claims=claim,
             )
         except Exception as exception:
-            logger.error(
-                "Exception where generate the authz_data: {}".format(exception)
-            )
+            logger.error("Exception where generate the authz_data: {}".format(exception))
             raise exception
 
         return authz_data
@@ -270,14 +237,10 @@ class AuthorizationHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
             f"Params [authz_data {authz_data}]"
         )
-        if not self.config["metadata"]["openid_relying_party"]["code_challenge"][
-            "length"
-        ]:
+        if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["length"]:
             raise ValueError("code_challenge length in configuration is empty")
 
-        if not self.config["metadata"]["openid_relying_party"]["code_challenge"][
-            "method"
-        ]:
+        if not self.config["metadata"]["openid_relying_party"]["code_challenge"]["method"]:
             raise ValueError("code_challenge method in configuration is empty")
 
         rp_meta = self.config["metadata"]["openid_relying_party"]["code_challenge"]
@@ -394,6 +357,8 @@ class AuthorizationHandler(BaseEndpoint):
             auth_entity.created = now
         auth_entity.modified = now
 
+    # Esse metódo foi movido da classe principal CieOidcBackend pois é necessário para um contexto
+    # multitenant que a trust chain seja criada em tempo de execução, além de não ser utilizada nos demais handlers.
     def _generate_trust_chains(self, provider: str) -> dict:
         """
         private method _generate_trust_chains:
