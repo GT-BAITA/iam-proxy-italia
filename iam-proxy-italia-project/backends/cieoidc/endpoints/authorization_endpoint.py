@@ -31,9 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class AuthorizationHandler(BaseEndpoint):
-    """
-    Não recebe trustchain por passou a ser construída em tempo de execução.
-    """
     def __init__(
         self,
         config: dict,
@@ -43,6 +40,9 @@ class AuthorizationHandler(BaseEndpoint):
         auth_callback_func: Callable[[Context, InternalData], Response],
         converter: AttributeMapper,
     ) -> None:
+        """
+        Não recebe trustchain pois passou a ser construída em tempo de execução.
+        """
         logger.debug(f"Initializing: {self.__class__.__name__}.")
         super().__init__(
             config, internal_attributes, base_url, name, auth_callback_func, converter
@@ -128,7 +128,7 @@ class AuthorizationHandler(BaseEndpoint):
             endpoint=authorization_endpoint,
             provider_id=trust_chain.subject,
             data=json.dumps(authz_data),
-            provider_configuration=trust_chain.subject_configuration.payload["metadata"],
+            provider_configuration=trust_chain.subject_configuration.payload["metadata"]
         )
 
         self.__insert(authorization_entity, context)
@@ -170,9 +170,7 @@ class AuthorizationHandler(BaseEndpoint):
 
         return self.trust_chains[provider]
 
-    def __authorization_data(
-        self, provider_authorization_endpoint: str, context
-    ) -> dict:
+    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -196,9 +194,7 @@ class AuthorizationHandler(BaseEndpoint):
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
-        response_type: str = self.config["metadata"]["openid_relying_party"][
-            "response_types"
-        ][0]
+        response_type: str = self.config["metadata"]["openid_relying_party"]["response_types"][0]
 
         try:
             authz_data = dict(
@@ -308,7 +304,7 @@ class AuthorizationHandler(BaseEndpoint):
                 "response_type": authz_data["response_type"],
                 "code_challenge": authz_data["code_challenge"],
                 "code_challenge_method": authz_data["code_challenge_method"],
-                "request": authz_data["request"],
+                "request": authz_data["request"]
             }
         )
 
