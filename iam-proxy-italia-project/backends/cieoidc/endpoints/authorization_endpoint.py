@@ -46,9 +46,7 @@ class AuthorizationHandler(BaseEndpoint):
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
         )
-        super().__init__(
-            config, internal_attributes, base_url, name, auth_callback_func, converter
-        )
+        super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = {}
