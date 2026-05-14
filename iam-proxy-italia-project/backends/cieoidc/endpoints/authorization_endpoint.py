@@ -21,7 +21,7 @@ from ..utils.helpers.misc import (
     random_string,
     get_pkce,
     get_key,
-    http_dict_to_redirect_uri_path,
+    http_dict_to_redirect_uri_path
 )
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
 from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
@@ -43,7 +43,9 @@ class AuthorizationHandler(BaseEndpoint):
         """
         Não recebe trustchain pois passou a ser construída em tempo de execução.
         """
-        logger.debug(f"Initializing: {self.__class__.__name__}.")
+        logger.debug(
+            f"Initializing: {self.__class__.__name__}."
+        )
         super().__init__(
             config, internal_attributes, base_url, name, auth_callback_func, converter
         )
