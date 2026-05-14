@@ -72,7 +72,8 @@ class AuthorizationHandler(BaseEndpoint):
         """
         Validates essential configuration fields for the authorization endpoint.
         """
-        self._require_config_field(["endpoints", "authorization_endpoint"], "Authorization endpoint")
+        self._require_config_field(
+            ["endpoints", "authorization_endpoint"], "Authorization endpoint")
         self._require_config_field(
             ["endpoints", "authorization_endpoint", "config"], "Authorization endpoint config")
         self._require_config_field(
@@ -84,7 +85,8 @@ class AuthorizationHandler(BaseEndpoint):
             ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "client_id"],
             "Client ID")
         self._require_config_field(
-            ["endpoints", "authorization_endpoint", "config", "metadata", "openid_relying_party", "redirect_uris"],
+            ["endpoints", "authorization_endpoint", "config", "metadata",
+             "openid_relying_party", "redirect_uris"],
             "Redirect URI")
 
     def endpoint(self, context, *args):
