@@ -164,7 +164,9 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params[provider: {provider}]"
         )
 
-        # verifica a existência da trust chain usando provider como chave, caso não encontre, tenta construir a trust chain
+        # verifica a existência da trust chain usando provider como chave, caso não encontre, tenta construir a trust chain.
+        # Uma instância do backend pode atender um RP que pode requisitar vários provider diferentes, quando uma trust_chain
+        # é criada, fica salva em cache para ser reaproveitada.
         if provider not in self.trust_chains:
             self.trust_chains = self._generate_trust_chains(provider=provider)
 
