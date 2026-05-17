@@ -1,13 +1,8 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
 class OidcUser(BaseModel):
-    username: str
-    first_name: str
-    last_name: str
-    email: str
-    sub: str
-    fiscal_number: str
-    attributes: Optional[dict] = None
+    # Removido os atributos definidos para permitir que mais informações de usuario sejam
+    # obtidas e repassadas
+    class Config:
+        extra = "allow"

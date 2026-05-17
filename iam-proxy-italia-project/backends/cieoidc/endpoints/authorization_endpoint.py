@@ -24,30 +24,32 @@ from ..utils.helpers.misc import (
     http_dict_to_redirect_uri_path
 )
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
-
+from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
+from backends.cieoidc.cieoidc import CieOidcBackend
 
 logger = logging.getLogger(__name__)
 
 
 class AuthorizationHandler(BaseEndpoint):
-
     def __init__(
-            self,
-            config: dict,
-            internal_attributes: dict[str, dict[str, str | list[str]]],
-            base_url: str,
-            name: str,
-            auth_callback_func: Callable[[Context, InternalData], Response],
-            converter: AttributeMapper,
-            trust_chains
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
     ) -> None:
+        """
+        Não recebe trustchain pois passou a ser construída em tempo de execução.
+        """
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
         )
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
-        self.trust_chains = trust_chains
+        self.trust_chains = {}
 
     @property
     def _jwks(self) -> dict:
@@ -110,10 +112,16 @@ class AuthorizationHandler(BaseEndpoint):
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
-        authz_data = self.__authorization_data(authorization_endpoint)
+        authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
-        authz_data["prompt"] = self.config["prompt"]
+        # Caso prompt esteja presente na requisição, adiciona ao authz, necessário para permitir dinamicidade na request
+        if context.qs_params.get("prompt"):
+            authz_data["prompt"] = context.qs_params.get("prompt")
+
+        # Add key idp_hint
+        if context.qs_params.get("idp_hint"):
+            authz_data["idp_hint"] = context.qs_params.get("idp_hint")
 
         # generation pkce value
         self.__pkce_generation(authz_data)
@@ -159,9 +167,16 @@ class AuthorizationHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}."
             f"Params[provider: {provider}]"
         )
+
+        # verifica a existência da trust chain usando provider como chave, caso não encontre, tenta construir a trust chain.
+        # Uma instância do backend pode atender um RP que pode requisitar vários provider diferentes, quando uma trust_chain
+        # é criada, fica salva em cache para ser reaproveitada.
+        if provider not in self.trust_chains:
+            self.trust_chains = self._generate_trust_chains(provider=provider)
+
         return self.trust_chains[provider]
 
-    def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
+    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -178,7 +193,10 @@ class AuthorizationHandler(BaseEndpoint):
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
         # local do campo scope alterado para ser válido, fora da entity configuration
-        scope = self.config["scope"]
+
+        # Resgatamos do scope e acr_values da request em context, para permitir dinamicidade na request
+        scope = context.qs_params.get("scope")
+        acr_values = context.qs_params.get("acr_values") or []
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
@@ -194,7 +212,7 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values=self.config["acr_values"],
+                acr_values=acr_values,
                 # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
@@ -285,21 +303,26 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params [authz_data {authz_data}]"
         )
 
-        uri_path = http_dict_to_redirect_uri_path(
-            {
-                "client_id": authz_data["client_id"],
-                "scope": authz_data["scope"],
-                "response_type": authz_data["response_type"],
-                "code_challenge": authz_data["code_challenge"],
-                "code_challenge_method": authz_data["code_challenge_method"],
-                "request": authz_data["request"]
-            }
-        )
+        request_uri_object = {
+            "client_id": authz_data["client_id"],
+            "scope": authz_data["scope"],
+            "response_type": authz_data["response_type"],
+            "code_challenge": authz_data["code_challenge"],
+            "code_challenge_method": authz_data["code_challenge_method"],
+            "request": authz_data["request"]
+        }
+
+        if "prompt" in authz_data:
+            request_uri_object["prompt"] = authz_data["prompt"]
+
+        if "idp_hint" in authz_data:
+            request_uri_object["idp_hint"] = authz_data["idp_hint"]
+
+        uri_path = http_dict_to_redirect_uri_path(request_uri_object)
 
         return uri_path
 
     def __insert(self, obj: dict, context):
-
         """
         method __insert:
         This method insert the input dictionary into DB layer.
@@ -343,3 +366,54 @@ class AuthorizationHandler(BaseEndpoint):
         if auth_entity.created is None:
             auth_entity.created = now
         auth_entity.modified = now
+
+    # Esse metódo foi movido da classe principal CieOidcBackend pois é necessário para um contexto
+    # multitenant que a trust chain seja criada em tempo de execução, além de não ser utilizada nos demais handlers.
+    def _generate_trust_chains(self, provider: str) -> dict:
+        """
+        private method _generate_trust_chains:
+        This method generate a list of trust-chain. After create a entity statement
+        for Trust Anchor, validate itself, and call the generate_trust_chain
+        for all providers into configuration.
+        Add all providers into dictionary.
+        """
+        logger.debug(
+            f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
+        )
+
+        httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
+        ta_urls = self.config["trust_chain"]["config"]["trust_anchor"]
+
+        # Valida todas as TAs
+        trust_anchors = []
+        for ta_url in ta_urls:
+            try:
+                jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
+                ta_ec = EntityStatement(jwt, httpc_params=httpc_params)
+                ta_ec.validate_by_itself()
+                trust_anchors.append(ta_ec)
+                logger.info(f"Successfully validated Trust Anchor: {ta_url}")
+            except Exception as e:
+                logger.error(f"Failed to validate TA {ta_url}: {e}")
+
+        if not trust_anchors:
+            raise ValueError("No valid Trust Anchors found")
+
+        trust_chains = dict()
+
+        # Tenta com cada TA até encontrar uma que funcione
+        for ta_ec in trust_anchors:
+            try:
+                trust_chains[provider] = CieOidcBackend.generate_trust_chain(
+                    ta_ec, provider, httpc_params
+                )
+                logger.info(f"Provider {provider} validated with TA {ta_ec.sub}")
+                break
+            except Exception as e:
+                logger.debug(f"Provider {provider} failed with TA {ta_ec.sub}: {e}")
+                continue
+        else:
+            # Se nenhuma TA funcionou
+            logger.debug(f"Provider {provider} could not be validated with any TA")
+
+        return trust_chains
