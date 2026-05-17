@@ -14,8 +14,6 @@ from ..utils.helpers.jwtse import (
     unpad_jwt_payload
 )
 
-from pyeudiw.trust.dynamic import CombinedTrustEvaluator
-
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +28,6 @@ class ExtendSessionHandler(BaseEndpoint):
         name: str,
         auth_callback_func: Callable[[Context, InternalData], Response],
         converter: AttributeMapper,
-        trust_evaluator: CombinedTrustEvaluator
     ) -> None:
 
         logger.debug(

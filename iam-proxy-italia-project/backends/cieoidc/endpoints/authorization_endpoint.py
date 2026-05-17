@@ -1,10 +1,13 @@
 import logging
 import inspect
 import json
+import time
 import uuid
+
 from datetime import datetime, timezone
 from pydantic import ValidationError
-from typing import Callable
+from types import SimpleNamespace
+from typing import Callable, Optional, List
 from copy import deepcopy
 
 from satosa.attribute_mapping import AttributeMapper
@@ -13,6 +16,7 @@ from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.response import Redirect
 from ..models.oidc_auth import OidcAuthentication
+from ..models.trust_chain_cache import TrustChainCache
 from ..utils import KeyUsage
 from ..utils.exceptions import TrustChainNotFoundError
 from ..utils.handlers.base_endpoint import BaseEndpoint
@@ -24,31 +28,96 @@ from ..utils.helpers.misc import (
     get_key,
     http_dict_to_redirect_uri_path
 )
+from ..storage.db_engine import OidcDbEngine
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
-
+from pyeudiw.federation.statements import EntityStatement, get_entity_configurations
+from backends.cieoidc.cieoidc import CieOidcBackend
 
 logger = logging.getLogger(__name__)
 
 
-class AuthorizationHandler(BaseEndpoint):
+def _trust_chain_from_cache(cached: TrustChainCache):
+    """
+    Build a minimal trust-chain-like object from TrustChainCache.
+    Has .subject and .subject_configuration.payload as required by authorization endpoint.
+    """
+    wrapper = SimpleNamespace()
+    wrapper.subject = cached.provider_url
+    wrapper.subject_configuration = SimpleNamespace(payload=cached.payload)
+    return wrapper
 
+
+def _is_cache_expired(cached: TrustChainCache, now=None) -> bool:
+    """Return True if the cached payload is expired (exp in the past)."""
+    exp = cached.exp or cached.payload.get("exp")
+    if exp is None:
+        return False
+    t = now if now is not None else time.time()
+    return t >= exp
+
+
+class TrustChainResolver:
+    """
+    Resolves trust chains from cache or builds them on-demand via discovery.
+    When a provider is requested but not in the cache (e.g. startup failed),
+    discovery is performed and the resulting trust chain is stored for reuse.
+    """
+
+    def __init__(self, trust_chains: dict, build_callback):
+        """
+        :param trust_chains: Dict of provider_url -> TrustChainBuilder (mutated when new chains are built)
+        :param build_callback: Callable(provider_url) -> TrustChainBuilder; raises TrustChainNotFoundError on failure
+        """
+        self._chains = trust_chains
+        self._build = build_callback
+
+    def __contains__(self, key):
+        return key in self._chains
+
+    def __getitem__(self, key):
+        return self._chains[key]
+
+    def keys(self):
+        return self._chains.keys()
+
+    def get_or_build(self, provider_url: str) -> TrustChainBuilder:
+        """Get trust chain from cache, or discover and store it on-demand."""
+        for key in (
+            provider_url,
+            provider_url.rstrip("/"),
+            provider_url + "/" if not provider_url.endswith("/") else None,
+        ):
+            if key and key in self._chains:
+                return self._chains[key]
+        return self._build(provider_url)
+
+
+class AuthorizationHandler(BaseEndpoint):
     def __init__(
-            self,
-            config: dict,
-            internal_attributes: dict[str, dict[str, str | list[str]]],
-            base_url: str,
-            name: str,
-            auth_callback_func: Callable[[Context, InternalData], Response],
-            converter: AttributeMapper,
-            trust_chains
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
     ) -> None:
+        """
+        Não recebe trustchain pois passou a ser construída em tempo de execução.
+        """
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
         )
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
-        self.trust_chains = trust_chains
+        self._validated_trust_anchors: List[EntityStatement] = []
+        self.providers = self.config.get("providers", [])
+        self.trust_chain = self._generate_trust_chains()
+        self._trust_chain_resolver = TrustChainResolver(
+            self.trust_chain,
+            self.get_or_build_trust_chain,
+        )
 
     @property
     def _jwks(self) -> dict:
@@ -110,6 +179,9 @@ class AuthorizationHandler(BaseEndpoint):
                 "No identity provider was selected. The request is missing target_entity_id.",
             )
 
+        # adiciona o provider para manter compatibilidade mesmo em multitenant e ser possivel fazer verificações
+        self.providers.append(provider_url)
+
         try:
             trust_chain = self.__get_trust_chain(provider_url)
         except TrustChainNotFoundError as exc:
@@ -130,10 +202,16 @@ class AuthorizationHandler(BaseEndpoint):
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
-        authz_data = self.__authorization_data(authorization_endpoint)
+        authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
-        authz_data["prompt"] = self.config["prompt"]
+        # Caso prompt esteja presente na requisição, adiciona ao authz, necessário para permitir dinamicidade na request
+        if context.qs_params.get("prompt"):
+            authz_data["prompt"] = context.qs_params.get("prompt")
+
+        # Add key idp_hint
+        if context.qs_params.get("idp_hint"):
+            authz_data["idp_hint"] = context.qs_params.get("idp_hint")
 
         # generation pkce value
         self.__pkce_generation(authz_data)
@@ -175,14 +253,14 @@ class AuthorizationHandler(BaseEndpoint):
         )
         # Try cache first (dict lookup with URL normalization)
         for key in (provider, provider.rstrip("/"), provider + "/" if not provider.endswith("/") else None):
-            if key and key in self.trust_chains:
-                return self.trust_chains[key]
+            if key and key in self._trust_chain_resolver:
+                return self._trust_chain_resolver[key]
 
         # On-demand discovery: resolver builds and stores the chain
-        if hasattr(self.trust_chains, "get_or_build"):
-            return self.trust_chains.get_or_build(provider)
+        if hasattr(self._trust_chain_resolver, "get_or_build"):
+            return self._trust_chain_resolver.get_or_build(provider)
 
-        configured = list(self.trust_chains.keys()) if hasattr(self.trust_chains, "keys") else []
+        configured = list(self._trust_chain_resolver.keys()) if hasattr(self._trust_chain_resolver, "keys") else []
         if not configured:
             raise TrustChainNotFoundError(
                 "The selected identity provider could not be used: no trust chains "
@@ -199,7 +277,7 @@ class AuthorizationHandler(BaseEndpoint):
             "'Exception ... generated from this provider' messages."
         ) from None
 
-    def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
+    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -216,7 +294,10 @@ class AuthorizationHandler(BaseEndpoint):
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
         # local do campo scope alterado para ser válido, fora da entity configuration
-        scope = self.config["scope"]
+
+        # Resgatamos do scope e acr_values da request em context, para permitir dinamicidade na request
+        scope = context.qs_params.get("scope")
+        acr_values = context.qs_params.get("acr_values") or []
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
@@ -232,7 +313,7 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values=self.config["acr_values"],
+                acr_values=acr_values,
                 # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
@@ -323,21 +404,26 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params [authz_data {authz_data}]"
         )
 
-        uri_path = http_dict_to_redirect_uri_path(
-            {
-                "client_id": authz_data["client_id"],
-                "scope": authz_data["scope"],
-                "response_type": authz_data["response_type"],
-                "code_challenge": authz_data["code_challenge"],
-                "code_challenge_method": authz_data["code_challenge_method"],
-                "request": authz_data["request"]
-            }
-        )
+        request_uri_object = {
+            "client_id": authz_data["client_id"],
+            "scope": authz_data["scope"],
+            "response_type": authz_data["response_type"],
+            "code_challenge": authz_data["code_challenge"],
+            "code_challenge_method": authz_data["code_challenge_method"],
+            "request": authz_data["request"]
+        }
+
+        if "prompt" in authz_data:
+            request_uri_object["prompt"] = authz_data["prompt"]
+
+        if "idp_hint" in authz_data:
+            request_uri_object["idp_hint"] = authz_data["idp_hint"]
+
+        uri_path = http_dict_to_redirect_uri_path(request_uri_object)
 
         return uri_path
 
     def __insert(self, obj: dict, context):
-
         """
         method __insert:
         This method insert the input dictionary into DB layer.
@@ -381,3 +467,168 @@ class AuthorizationHandler(BaseEndpoint):
         if auth_entity.created is None:
             auth_entity.created = now
         auth_entity.modified = now
+
+    # Esse metódo foi movido da classe principal CieOidcBackend pois é necessário para um contexto
+    # multitenant que a trust chain seja criada em tempo de execução, além de não ser utilizada nos demais handlers.
+    def _generate_trust_chains(self) -> dict:
+        """try load from DB, or can try discovery with TA's list."""
+        httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
+        trust_chains = dict()
+
+        for provider_url in self.providers:
+            # try load from DB
+            engine = self._get_storage()
+            if engine:
+                cached = engine.get_trust_chain_by_provider(provider_url)
+                if cached and not _is_cache_expired(cached):
+                    chain = _trust_chain_from_cache(cached)
+                    self._add_to_dict(trust_chains, provider_url, chain)
+                    continue
+
+            # Build via discovery, tryng each TA
+            try:
+                tas = self._ensure_trust_anchors()
+                chain_built = False
+                for ta_ec in tas:
+                    try:
+                        chain = CieOidcBackend.generate_trust_chain(
+                            ta_ec, provider_url, httpc_params
+                        )
+                        self._add_to_dict(trust_chains, provider_url, chain)
+                        self._store_trust_chain(chain, provider_url)
+                        logger.info(
+                            "Provider %s linked to TA %s", provider_url, ta_ec.sub
+                        )
+                        chain_built = True
+                        break
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to build trust chain for provider %s with TA %s: %s",
+                            provider_url,
+                            getattr(ta_ec, "sub", "<unknown>"),
+                            e,
+                        )
+                if not chain_built:
+                    logger.error(
+                        "Could not build trust chain for provider %s with any configured trust anchor",
+                        provider_url,
+                    )
+            except Exception as e:
+                logger.error(
+                    "Could not resolve trust chain for %s: %s", provider_url, e
+                )
+
+        return trust_chains
+
+    def _store_trust_chain(self, chain, provider_url: str) -> None:
+        """Persist trust chain to database if storage is available."""
+        engine = self._get_storage()
+        if engine is None:
+            return
+        try:
+            payload = chain.subject_configuration.payload
+            exp = payload.get("exp")
+            variants = {
+                provider_url.rstrip("/"),
+                provider_url.rstrip("/") + "/"
+            }
+
+            for url in variants:
+                cached = TrustChainCache(
+                    provider_url=url,
+                    payload=payload,
+                    exp=exp,
+                    created=datetime.now(timezone.utc),
+                )
+                engine.add_or_update_trust_chain(cached)
+        except Exception as e:
+            logger.warning("Could not persist trust chain for %s: %s", provider_url, e)
+
+    def _get_storage(self) -> Optional[OidcDbEngine]:
+        """Create and return storage engine; connect if needed. Returns None if no storage configured."""
+        if getattr(self, "_storage_engine", None) is not None:
+            return self._storage_engine
+        storage_config = self.config.get("storage") or {}
+        if not storage_config:
+            return None
+        try:
+            engine = OidcDbEngine(storage_config)
+            engine.connect()
+            self._storage_engine = engine
+            return engine
+        except Exception as e:
+            logger.warning("Could not initialize storage for trust chain persistence: %s", e)
+            return None
+
+    def get_or_build_trust_chain(self, provider_url: str) -> TrustChainBuilder:
+        """
+        Get trust chain from cache, or from DB, or discover and build it on-demand.
+        Newly built chains are stored in memory and in the database.
+        """
+        provider_variants = [provider_url, provider_url.rstrip("/")]
+        if not provider_url.endswith("/"):
+            provider_variants.append(provider_url + "/")
+        if not any(p in self.providers for p in provider_variants if p):
+            raise TrustChainNotFoundError(f"Provider {provider_url} not in allowed list.")
+
+        # Try load from DB (in-memory cache already checked by TrustChainResolver)
+        engine = self._get_storage()
+        if engine:
+            cached = engine.get_trust_chain_by_provider(provider_url)
+            if cached and not _is_cache_expired(cached):
+                chain = _trust_chain_from_cache(cached)
+                self._add_to_dict(self.trust_chain, provider_url, chain)
+                return chain
+
+        httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
+        tas = self._ensure_trust_anchors()
+
+        for ta_ec in tas:
+            try:
+                chain = CieOidcBackend.generate_trust_chain(ta_ec, provider_url, httpc_params)
+                self._add_to_dict(self.trust_chain, provider_url, chain)
+                self._store_trust_chain(chain, provider_url)
+                return chain
+            except Exception:
+                continue
+
+        raise TrustChainNotFoundError(f"Failed to build trust chain for {provider_url} with any TA.")
+
+    def _ensure_trust_anchors(self) -> List[EntityStatement]:
+        """Return a list of valid TAs."""
+        if not self._validated_trust_anchors:
+            httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
+            ta_urls = self.config["trust_chain"]["config"]["trust_anchor"]
+
+            for ta_url in ta_urls:
+                try:
+                    jwt = get_entity_configurations(ta_url, httpc_params=httpc_params)[0]
+                    ta_ec = EntityStatement(jwt, httpc_params=httpc_params)
+                    ta_ec.validate_by_itself()
+                    self._validated_trust_anchors.append(ta_ec)
+                except Exception as e:
+                    logger.error(f"Failed to validate TA {ta_url}: {e}")
+
+            if not self._validated_trust_anchors:
+                raise ValueError("No valid Trust Anchors could be loaded.")
+
+        return self._validated_trust_anchors
+
+    def _add_to_dict(self, d, url, chain):
+        """Helper to add a normalized URL in a dict."""
+        # Always store the exact URL key.
+        d[url] = chain
+        # Also store the normalized variant (with/without trailing slash),
+        # but avoid silently overwriting an existing normalized entry.
+        norm = url.rstrip("/") if url.endswith("/") else url + "/"
+        if norm != url:
+            if norm in d:
+                logger.warning(
+                    "Duplicate provider URL variants configured: %s and %s; "
+                    "keeping existing trust chain for %s",
+                    url,
+                    norm,
+                    norm,
+                )
+            else:
+                d[norm] = chain
