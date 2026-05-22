@@ -326,7 +326,9 @@ def resolve_via_trust_anchors(entity_id, trust_anchors):
             # Step 2: Call the resolve endpoint
             logger.debug(
                 "Calling resolve endpoint %s for sub=%s anchor=%s",
-                resolve_endpoint, entity_id, ta_entity_id,
+                resolve_endpoint,
+                entity_id,
+                ta_entity_id,
             )
             resp = http_requests.get(
                 resolve_endpoint,
@@ -346,7 +348,8 @@ def resolve_via_trust_anchors(entity_id, trust_anchors):
 
             logger.info(
                 "Resolved trust chain for %s via Trust Anchor %s",
-                entity_id, ta_entity_id,
+                entity_id,
+                ta_entity_id,
             )
             return resolve_payload
 
@@ -478,17 +481,13 @@ def _apply_policy_to_metadata(metadata, policy):
                     )
         if "superset_of" in operators and param in result:
             if isinstance(result[param], list):
-                if not set(result[param]).issuperset(
-                    set(operators["superset_of"])
-                ):
+                if not set(result[param]).issuperset(set(operators["superset_of"])):
                     raise FederationError(
                         f"Policy violation: {param} not superset of "
                         f"{operators['superset_of']}"
                     )
         if operators.get("essential") and param not in result:
-            raise FederationError(
-                f"Policy violation: {param} is essential but missing"
-            )
+            raise FederationError(f"Policy violation: {param} is essential but missing")
     return result
 
 
@@ -862,13 +861,15 @@ class OpenIDFederationFrontend(OpenIDConnectFrontend):
                 f"client_assertion sub={payload.get('sub')} != client_id={client_id}"
             )
 
-        # RFC 7523 Section 3: aud MUST contain the token endpoint URL
+        # RFC 7523: aud MUST identificar o servidor de autorização como destinatário pretendido.
+        # Normaliza para lista porque a spec permite aud como string ou array.
         aud = payload.get("aud")
         if isinstance(aud, str):
             aud = [aud]
 
-        # Removido path Hardcoded para token endpoint (/OIDFed/token)
-        # Pegamos a URL esperada dos metadados da entidade
+        # Obtém o token_endpoint dos metadados do provider para não depender de path hardcoded.
+        # Um cliente legítimo deve sempre apontar o aud para o token_endpoint exato deste servidor,
+        # impedindo que um client_assertion capturado seja reutilizado em outro servidor.
         expected_audiences = [
             self.provider.provider_configuration.get("token_endpoint"),
         ]
@@ -878,9 +879,7 @@ class OpenIDFederationFrontend(OpenIDConnectFrontend):
                 f"client_assertion aud={aud} does not contain a valid audience. Expected one of: {expected_audiences}"
             )
 
-        logger.debug(
-            "Verified private_key_jwt for client %s", client_id
-        )
+        logger.debug("Verified private_key_jwt for client %s", client_id)
 
     def _auto_register_client(self, entity_id):
         """Resolve an RP's trust chain and register it as an OIDC client in pyop.
@@ -919,9 +918,7 @@ class OpenIDFederationFrontend(OpenIDConnectFrontend):
         else:
             # Resolve via Trust Anchor resolve endpoints. The TA does all
             # the chain-walking and policy application server-side.
-            resolve_result = resolve_via_trust_anchors(
-                entity_id, self.trust_anchors
-            )
+            resolve_result = resolve_via_trust_anchors(entity_id, self.trust_anchors)
             resolved_metadata = resolve_result.get("metadata", {})
             self._rp_cache[entity_id] = {
                 "metadata": resolved_metadata,
