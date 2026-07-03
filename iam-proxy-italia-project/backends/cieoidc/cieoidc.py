@@ -9,6 +9,7 @@ from .utils.endpoints_loader import EndpointsLoader
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
 from pyeudiw.federation.statements import EntityStatement
 
+
 logger = logging.getLogger(__name__)
 
 
