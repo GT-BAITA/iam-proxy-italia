@@ -35,7 +35,10 @@ from backends.cieoidc.cieoidc import CieOidcBackend
 
 logger = logging.getLogger(__name__)
 
-
+# ================
+# Funções _trust_chain_from_cache e _is_cache_expired, e a classe TrustChainResolver foram movidos
+# do arquivo principal que não tem mais a lógica de trustchain
+# ================
 def _trust_chain_from_cache(cached: TrustChainCache):
     """
     Build a minimal trust-chain-like object from TrustChainCache.
@@ -111,6 +114,10 @@ class AuthorizationHandler(BaseEndpoint):
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
+
+        # Atributos eram utilizados pela classe principal para geração da trust chain.
+        # Toda a lógica foi movida para este handler, permitindo a criação da trust chain
+        # em tempo de execução para suporte ao contexto multitenant.
         self._validated_trust_anchors: List[EntityStatement] = []
         self.providers = self.config.get("providers", [])
         self.trust_chain = self._generate_trust_chains()
@@ -468,8 +475,12 @@ class AuthorizationHandler(BaseEndpoint):
             auth_entity.created = now
         auth_entity.modified = now
 
-    # Esse metódo foi movido da classe principal CieOidcBackend pois é necessário para um contexto
-    # multitenant que a trust chain seja criada em tempo de execução, além de não ser utilizada nos demais handlers.
+    # ===============================================================================================
+    # Estes métodos foram movidos da classe CieOidcBackend para suporte ao contexto multitenant,
+    # que exige a criação da trust chain em tempo de execução. Como não são utilizados pelos demais
+    # handlers e a geração da trust chain foi removida da inicialização do plugin, não há motivo
+    # para mantê-los na classe principal.
+    # ===============================================================================================
     def _generate_trust_chains(self) -> dict:
         """try load from DB, or can try discovery with TA's list."""
         httpc_params = self.config["trust_chain"]["config"]["httpc_params"]
