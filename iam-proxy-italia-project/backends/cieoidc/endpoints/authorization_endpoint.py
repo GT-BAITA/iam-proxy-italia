@@ -224,8 +224,7 @@ class AuthorizationHandler(BaseEndpoint):
         )
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
-        # local do campo scope alterado para ser válido, fora da entity configuration
-
+        # O scope era definido por configuração, passamos a defini-lo dinamicamente.
         # Resgatamos do scope e acr_values da request em context, para permitir dinamicidade na request
         scope = context.qs_params.get("scope")
         acr_values = context.qs_params.get("acr_values") or []
