@@ -24,13 +24,14 @@ logger = logging.getLogger(__name__)
 class AuthorizationCallBackHandler(BaseEndpoint):
 
     def __init__(
-        self,
-        config: dict,
-        internal_attributes: dict[str, dict[str, str | list[str]]],
-        base_url: str,
-        name: str,
-        auth_callback_func: Callable[[Context, InternalData], Response],
-        converter: AttributeMapper,
+            self,
+            config: dict,
+            internal_attributes: dict[str, dict[str, str | list[str]]],
+            base_url: str,
+            name: str,
+            auth_callback_func: Callable[[Context, InternalData], Response],
+            converter: AttributeMapper,
+            trust_chains
     ) -> None:
 
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
