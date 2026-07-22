@@ -13,6 +13,7 @@ from satosa.internal import InternalData
 from satosa.response import Response
 from satosa.response import Redirect
 from ..models.oidc_auth import OidcAuthentication
+from ..storage.db_engine import OidcDbEngine
 from ..utils import KeyUsage
 from ..utils.exceptions import TrustChainNotFoundError
 from ..utils.handlers.base_endpoint import BaseEndpoint
@@ -26,10 +27,12 @@ from ..utils.helpers.misc import (
 )
 from pyeudiw.federation.trust_chain_builder import TrustChainBuilder
 
+
 logger = logging.getLogger(__name__)
 
 
 class AuthorizationHandler(BaseEndpoint):
+
     def __init__(
             self,
             config: dict,
@@ -40,9 +43,6 @@ class AuthorizationHandler(BaseEndpoint):
             converter: AttributeMapper,
             trust_chains
     ) -> None:
-        """
-        Não recebe trustchain pois passou a ser construída em tempo de execução.
-        """
         logger.debug(
             f"Initializing: {self.__class__.__name__}."
         )
@@ -50,6 +50,8 @@ class AuthorizationHandler(BaseEndpoint):
         self._entity_type = self.config.get("entity_type")
         self._jwks_core = self.config.get("jwks_core")
         self.trust_chains = trust_chains
+        self._db_engine = OidcDbEngine(config.get("db_config", {}))
+        self._db_engine.connect()
 
     @property
     def _jwks(self) -> dict:
@@ -370,7 +372,10 @@ class AuthorizationHandler(BaseEndpoint):
 
         try:
             auth = OidcAuthentication(**obj)
-            self.__prepare_for_insert(auth)
+            now = datetime.now(timezone.utc)
+            if auth.created is None:
+                auth.created = now
+            auth.modified = now
             auth.id = str(uuid.uuid4())
 
             auth_dump = auth.model_dump(mode="json")
@@ -389,10 +394,3 @@ class AuthorizationHandler(BaseEndpoint):
             logger.error(f"Erro de validação: {e}")
         except Exception as e:
             logger.error(f"Erro inesperado: {e}")
-
-    def __prepare_for_insert(self, auth_entity: OidcAuthentication):
-        """Prepara a entidade para inserção"""
-        now = datetime.now(timezone.utc)
-        if auth_entity.created is None:
-            auth_entity.created = now
-        auth_entity.modified = now

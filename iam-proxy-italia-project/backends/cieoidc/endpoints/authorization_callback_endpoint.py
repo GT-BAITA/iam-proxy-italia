@@ -12,11 +12,14 @@ from pydantic import ValidationError
 from ..utils.helpers.configuration_utils import ConfigurationPlugin
 from ..utils.clients.oauth2 import OAuth2AuthorizationCodeGrant
 from ..utils.clients.oidc import OidcUserInfo
+from ..storage.db_engine import OidcDbEngine
 from ..models.oidc_auth import OidcAuthentication
 from ..models.user import OidcUser
+from ..utils.exceptions import StorageUnreachable
 from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
+from pyeudiw.trust.dynamic import CombinedTrustEvaluator  # todo remove pyeudiw dependency
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +27,14 @@ logger = logging.getLogger(__name__)
 class AuthorizationCallBackHandler(BaseEndpoint):
 
     def __init__(
-            self,
-            config: dict,
-            internal_attributes: dict[str, dict[str, str | list[str]]],
-            base_url: str,
-            name: str,
-            auth_callback_func: Callable[[Context, InternalData], Response],
-            converter: AttributeMapper,
-            trust_chains
+        self,
+        config: dict,
+        internal_attributes: dict[str, dict[str, str | list[str]]],
+        base_url: str,
+        name: str,
+        auth_callback_func: Callable[[Context, InternalData], Response],
+        converter: AttributeMapper,
+        trust_evaluator: CombinedTrustEvaluator
     ) -> None:
 
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
@@ -40,6 +43,11 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         self.client_assertion_type = config.get("client_assertion_type")
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
+        self._db_engine = OidcDbEngine(config.get("db_config", {}))
+        self._db_engine.connect()
+        # não usamos banco de dados
+        # if not self._db_engine.is_connected():
+        #     raise StorageUnreachable
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
 
     def endpoint(self, context, *args):
