@@ -252,9 +252,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         authorization["scope"] = token_response.get("scope")
         authorization["token_type"] = token_response["token_type"]
         authorization["expires_in"] = token_response["expires_in"]
-        self      # - name: Copy Satosa IDP Metadata to djangosaml2 SP
-      #   run: |
-      #     wget -vd --no-check-certificate https://iam-proxy-italia.example.org/Saml2IDP/metadata -O Docker-compose/djangosaml2_sp/saml2_sp/saml2_config/iam-proxy-italia.xml.__update_authorization(authorization, context)
+        self.__update_authorization(authorization, context)
 
     def __update_authorization(self, authorization_input: dict, context):
         """

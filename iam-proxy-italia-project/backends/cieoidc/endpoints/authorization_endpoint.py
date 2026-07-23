@@ -244,7 +244,7 @@ class AuthorizationHandler(BaseEndpoint):
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
                 acr_values=acr_values,
-                # TODO Ask this to Giuseppe because into Django this variable is empty or not? OIDCFED_ACR_PROFILES = getattr(settings,"OIDCFED_ACR_PROFILES",AcrValues.l2.value)
+                # TODO Ask Giuseppe: Django OIDCFED_ACR_PROFILES empty or not?
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
                 jti=str(uuid.uuid4()),
