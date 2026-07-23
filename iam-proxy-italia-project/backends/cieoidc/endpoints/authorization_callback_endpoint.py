@@ -16,7 +16,7 @@ from ..storage.db_engine import OidcDbEngine
 from ..models.oidc_auth import OidcAuthentication
 from ..models.user import OidcUser
 from ..utils.exceptions import StorageUnreachable
-from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt, process_user_attributes
+from ..utils.helpers.misc import get_jwks, get_jwk_from_jwt
 from ..utils.handlers.base_endpoint import BaseEndpoint
 from ..utils.helpers.jwtse import verify_jws, unpad_jwt_payload, verify_at_hash
 from pyeudiw.trust.dynamic import CombinedTrustEvaluator  # todo remove pyeudiw dependency
@@ -40,14 +40,14 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         super().__init__(config, internal_attributes, base_url, name, auth_callback_func, converter)
 
         self.httpc_params = config.get("httpc_params", {})
-        self.claims = config.get("claims", {})
         self.client_assertion_type = config.get("client_assertion_type")
         self.grant_type = config.get("grant_type")
         self.jws_core = config.get("jwks_core")
         self._db_engine = OidcDbEngine(config.get("db_config", {}))
         self._db_engine.connect()
-        if not self._db_engine.is_connected():
-            raise StorageUnreachable
+        # não usamos banco de dados
+        # if not self._db_engine.is_connected():
+        #     raise StorageUnreachable
         self.configuration_plugins = self.generate_configuration_plugin(self.config)
 
     def endpoint(self, context, *args):
@@ -69,7 +69,7 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             raise SATOSAAuthenticationError(context.state, context.qs_params.get('error_description'))
 
         state: str = context.qs_params.get("state")
-        authorization = self.__get_authorization(state)
+        authorization = self.__get_authorization(state, context)
 
         if not authorization:
             logger.debug("Authorization empty")
@@ -143,7 +143,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         # decoded_access_token = unpad_jwt_payload(access_token)
         # logger.debug(f"unpad_jwt_payload: {decoded_access_token}")
-        self.__update_authentication_token(authorization, access_token, id_token, token_response)
+        self.__update_authentication_token(
+            authorization, access_token, id_token, token_response, context
+        )
 
         # retrieve user data
         oidc_user = OidcUserInfo(authorization["provider_configuration"].get("openid_provider"), self.jws_core,
@@ -167,12 +169,9 @@ class AuthorizationCallBackHandler(BaseEndpoint):
                 f"to {authorization.get('provider_id')}",
             )
 
-        user_attrs = process_user_attributes(user_info, self.claims, authorization)
+        # Não é mais necessário filtrar/mapear os atributos, repassamos todas as informações de usuario
+        user_attrs = user_info
         if not user_attrs:
-            logger.error(
-                "No user attributes have been processed: "
-                f"user_info: {user_info} claims: {self.claims} authorization: {authorization}"
-            )
             raise SATOSAAuthenticationError(context.state, "No user attributes have been processed")
 
         user = self.__add_user(user_attrs)
@@ -186,12 +185,12 @@ class AuthorizationCallBackHandler(BaseEndpoint):
 
         authorization["user"] = user
 
-        self.__update_authorization(authorization)
+        self.__update_authorization(authorization, context)
 
         internal_data = self._translate_response(user.model_dump(mode="json"), iss, authorization.get("client_id"))
         return self._auth_callback(context, internal_data)
 
-    def __get_authorization(self, state: str) -> dict:
+    def __get_authorization(self, state: str, context) -> dict:
         """
         method __get_authorization:
         This method get the state from DB.
@@ -205,10 +204,13 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         """
         logger.debug(
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. Params [state {state}]")
+        # não usa mais mongo DB
+        # busca as informações no context
         try:
-            output = self._db_engine.get_sessions(state)
+            output = context.state["satosa_authz_state"]
+            output = OidcAuthentication(**output)
             if output:
-                return output[0].model_dump(mode="json")
+                return output.model_dump(mode="json")
         except ValidationError as e:
             logger.debug(e)
         return {}
@@ -227,9 +229,8 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             logger.debug(e)
             return None
 
-    def __update_authentication_token(
-        self, authorization: dict, access_token: dict, id_token: dict, token_response: dict
-    ):
+    def __update_authentication_token(self, authorization: dict, access_token: dict, id_token: dict,
+                                      token_response: dict, context):
         """
         method __update_authentication_token:
         This method update the authentication token. Add this properties:
@@ -244,14 +245,16 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             f"Params [authorization {authorization}, access_token: {access_token}, "
             f"id_token: {id_token}, token_response: {token_response}]"
         )
+        # não atualiza mais no mongo DB
+        # atualizamos as informações no context
         authorization["access_token"] = access_token
         authorization["id_token"] = id_token
         authorization["scope"] = token_response.get("scope")
         authorization["token_type"] = token_response["token_type"]
         authorization["expires_in"] = token_response["expires_in"]
-        self.__update_authorization(authorization)
+        self.__update_authorization(authorization, context)
 
-    def __update_authorization(self, authorization_input: dict):
+    def __update_authorization(self, authorization_input: dict, context):
         """
         method __update_authorization:
         This method update the authorization dict.
@@ -267,12 +270,13 @@ class AuthorizationCallBackHandler(BaseEndpoint):
             f"Entering method: {inspect.getframeinfo(inspect.currentframe()).function}. "
             f"Params [authorization_input {authorization_input}]"
         )
-
+        # Atualiza no context adicionando as novas informações
+        # para os endpoints serem capazes de trabalhar sem o mongoDB
         try:
             auth_token = OidcAuthentication(**authorization_input)
-            if not self._db_engine.update_session(auth_token):
-                logger.error("Unable to insert the AuthenticationToken object")
+            context.state["satosa_authz_state"] = auth_token.model_dump(mode="json")
         except ValidationError as e:
+            logger.error("Unable to insert the AuthenticationToken object")
             logger.debug(e)
 
         logger.debug(
@@ -317,6 +321,12 @@ class AuthorizationCallBackHandler(BaseEndpoint):
         internal_resp = InternalData(auth_info=auth_info)
         internal_resp.attributes = self._converter.to_internal("openid", attributes)
         internal_resp.subject_id = sub
+
+        # Sem o mapeamento do campo claims que foi removido, satosa não recebe um uid (obrigatótio), 
+        # então na ausencia de uid usamos sub para substituir
+        if "uid" not in internal_resp.attributes:
+            internal_resp.attributes['uid'] = internal_resp.attributes["sub"]
+
         return internal_resp
 
     @staticmethod

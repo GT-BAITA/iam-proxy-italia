@@ -133,10 +133,16 @@ class AuthorizationHandler(BaseEndpoint):
         authorization_endpoint = metadata["authorization_endpoint"]
 
         # generate the authorization dict
-        authz_data = self.__authorization_data(authorization_endpoint)
+        authz_data = self.__authorization_data(authorization_endpoint, context)
 
         # Add key prompt
-        authz_data["prompt"] = self.config["prompt"]
+        # Caso prompt esteja presente na requisição, adiciona ao authz, necessário para permitir dinamicidade na request
+        if context.qs_params.get("prompt"):
+            authz_data["prompt"] = context.qs_params.get("prompt")
+
+        # Add key idp_hint
+        if context.qs_params.get("idp_hint"):
+            authz_data["idp_hint"] = context.qs_params.get("idp_hint")
 
         # generation pkce value
         self.__pkce_generation(authz_data)
@@ -150,7 +156,7 @@ class AuthorizationHandler(BaseEndpoint):
             provider_configuration=trust_chain.subject_configuration.payload["metadata"]
         )
 
-        self.__insert(authorization_entity)
+        self.__insert(authorization_entity, context)
 
         self.__create_jws(authz_data)
 
@@ -202,7 +208,7 @@ class AuthorizationHandler(BaseEndpoint):
             "'Exception ... generated from this provider' messages."
         ) from None
 
-    def __authorization_data(self, provider_authorization_endpoint: str) -> dict:
+    def __authorization_data(self, provider_authorization_endpoint: str, context) -> dict:
         """
         method private authorization_data:
         This method generate the authorization data for the authorization endpoint.
@@ -218,8 +224,10 @@ class AuthorizationHandler(BaseEndpoint):
         )
 
         _timestamp_now = int(datetime.now(timezone.utc).timestamp())
-
-        scope = self.config["metadata"]["openid_relying_party"]["scope"]
+        # O scope era definido por configuração, passamos a defini-lo dinamicamente.
+        # Resgatamos do scope e acr_values da request em context, para permitir dinamicidade na request
+        scope = context.qs_params.get("scope")
+        acr_values = context.qs_params.get("acr_values") or []
 
         claim = self.config["metadata"]["openid_relying_party"]["claim"]
 
@@ -235,7 +243,7 @@ class AuthorizationHandler(BaseEndpoint):
                 state=random_string(32),
                 client_id=self.config["metadata"]["openid_relying_party"]["client_id"],
                 endpoint=provider_authorization_endpoint,
-                acr_values="https://www.spid.gov.it/SpidL2",
+                acr_values=acr_values,
                 # TODO Ask Giuseppe: Django OIDCFED_ACR_PROFILES empty or not?
                 iat=_timestamp_now,
                 exp=_timestamp_now + 60,
@@ -326,20 +334,26 @@ class AuthorizationHandler(BaseEndpoint):
             f"Params [authz_data {authz_data}]"
         )
 
-        uri_path = http_dict_to_redirect_uri_path(
-            {
-                "client_id": authz_data["client_id"],
-                "scope": authz_data["scope"],
-                "response_type": authz_data["response_type"],
-                "code_challenge": authz_data["code_challenge"],
-                "code_challenge_method": authz_data["code_challenge_method"],
-                "request": authz_data["request"]
-            }
-        )
+        request_uri_object = {
+            "client_id": authz_data["client_id"],
+            "scope": authz_data["scope"],
+            "response_type": authz_data["response_type"],
+            "code_challenge": authz_data["code_challenge"],
+            "code_challenge_method": authz_data["code_challenge_method"],
+            "request": authz_data["request"]
+        }
+
+        if "prompt" in authz_data:
+            request_uri_object["prompt"] = authz_data["prompt"]
+
+        if "idp_hint" in authz_data:
+            request_uri_object["idp_hint"] = authz_data["idp_hint"]
+
+        uri_path = http_dict_to_redirect_uri_path(request_uri_object)
 
         return uri_path
 
-    def __insert(self, obj: dict):
+    def __insert(self, obj: dict, context):
         """
         method __insert:
         This method insert the input dictionary into DB layer.
@@ -357,12 +371,25 @@ class AuthorizationHandler(BaseEndpoint):
 
         try:
             auth = OidcAuthentication(**obj)
-            if self._db_engine.add_session(auth) < 1:
-                logger.error("Unable to insert the Authentication object")
-        except ValidationError as e:
-            logger.debug(e)
-        # todo manage result
+            now = datetime.now(timezone.utc)
+            if auth.created is None:
+                auth.created = now
+            auth.modified = now
+            auth.id = str(uuid.uuid4())
 
-        logger.debug(
-            f"Registration success for input: {obj}"
-        )
+            auth_dump = auth.model_dump(mode="json")
+
+            # Salva no context (recebido como parâmetro)
+            # Substituímos a implementação o mongo db
+            # colocando as informações no context do satosa
+            if context:
+                context.state["satosa_authz_state"] = auth_dump
+            else:
+                logger.warning("Context não disponível para salvar auth")
+
+            logger.info(f"Objeto de autenticação criado (stateless) com sucesso")
+
+        except ValidationError as e:
+            logger.error(f"Erro de validação: {e}")
+        except Exception as e:
+            logger.error(f"Erro inesperado: {e}")

@@ -87,7 +87,11 @@ class CieOidcBackend(BackendModule):
         self.config = module_config
         self.endpoints = {}
         self._validated_trust_anchors: List[EntityStatement] = []
-        self.trust_chain = self._generate_trust_chains()
+        # criar cache de trust_chain apenas se houver providers configurados
+        if "providers" in self.config and self.config["providers"]:
+            self.trust_chain = self._generate_trust_chains()
+        else:
+            self.trust_chain = {}
         self._trust_chain_resolver = TrustChainResolver(
             self.trust_chain,
             self.get_or_build_trust_chain,
@@ -311,11 +315,14 @@ class CieOidcBackend(BackendModule):
         Newly built chains are stored in memory and in the database.
         """
         providers = self.config.get("providers", [])
-        provider_variants = [provider_url, provider_url.rstrip("/")]
-        if not provider_url.endswith("/"):
-            provider_variants.append(provider_url + "/")
-        if not any(p in providers for p in provider_variants if p):
-            raise TrustChainNotFoundError(f"Provider {provider_url} not in allowed list.")
+        
+        # Se a lista de providers estiver vazia, permite qualquer um
+        if providers:  # Só verifica se a lista não estiver vazia
+            provider_variants = [provider_url, provider_url.rstrip("/")]
+            if not provider_url.endswith("/"):
+                provider_variants.append(provider_url + "/")
+            if not any(p in providers for p in provider_variants if p):
+                raise TrustChainNotFoundError(f"Provider {provider_url} not in allowed list.")
 
         # Try load from DB (in-memory cache already checked by TrustChainResolver)
         engine = self._get_storage()
